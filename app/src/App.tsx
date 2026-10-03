@@ -9,7 +9,7 @@ import { answer, commitPending, agoUr, agoEn, dueUr, dueEn, type Answer } from '
 import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN, type HerdStatus } from './herd'
 import { signOf } from './nlu'
 import { checkReminders, requestNotifications } from './reminders'
-import { speak, canListen, listen, hasUrduVoice } from './speech'
+import { speak, canListen, listen, stopListening, hasUrduVoice, LISTEN_ERROR } from './speech'
 import { loadDemo, clearAll } from './demo'
 import { MapView } from './MapView'
 
@@ -241,6 +241,12 @@ function Ask() {
   const [q, setQ] = useState('')
   const [log, setLog] = useState<{ q: string; a: Answer }[]>([])
   const [listening, setListening] = useState(false)
+  const [micErr, setMicErr] = useState<[string, string]>()
+  const mic = () => {
+    if (listening) { stopListening(); return }
+    setMicErr(undefined)
+    if (listen(t => { setQ(t); ask(t) }, e => { setListening(false); if (e) setMicErr(LISTEN_ERROR[e]) })) setListening(true)
+  }
   const ask = async (text: string) => {
     if (!text.trim()) return
     const a = await answer(text); setLog(l => [{ q: text, a }, ...l].slice(0, 6)); setQ(''); speak(a.ur)
@@ -257,9 +263,11 @@ function Ask() {
       <div className="askbar">
         <input dir="auto" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && ask(q)}
           placeholder="یہاں بولیں یا لکھیں…" aria-label="Ask Chota" />
-        {canListen() && <button className={listening ? 'mic on' : 'mic'} onClick={() => { if (listen(t => { setQ(t); ask(t) }, () => setListening(false))) setListening(true) }}>🎤</button>}
+        {canListen() && <button className={listening ? 'mic on' : 'mic'} aria-label="Speak" onClick={mic}>🎤</button>}
         <button className="go" onClick={() => ask(q)}>➤</button>
       </div>
+      {listening && <p className="hint"><T ur="سن رہا ہوں… بولیں (روکنے کے لیے 🎤 دوبارہ دبائیں)" en="Listening… speak now (tap 🎤 again to stop)" /></p>}
+      {micErr && <div className="warn-line"><T ur={`🎤 ${micErr[0]}`} en={micErr[1]} /></div>}
       <p className="hint"><T ur="کی بورڈ کا 🎤 مائیک بھی استعمال کر سکتے ہیں" en="Tip: the keyboard's mic (Gboard Urdu voice typing) works too" /></p>
       {cur && (
         <div className={`answer ${cur.a.ok ? '' : 'muted'}`}>
