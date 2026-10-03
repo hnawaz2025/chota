@@ -68,7 +68,7 @@ dark mode.
    them. Modals are bottom sheets, so their actions sit in thumb reach.
 7. **Voice is the hub, typing is the fallback.** There is a 180px mic. The text box is visibly secondary (dashed
    border, ⌨️ placeholder), but stays prominent because offline the keyboard's mic fills it.
-8. **Nastaliq needs room.** Text is ≥18px (1.15rem), headings 1.5rem, and line-height is about 2. Bold (700) is used
+8. **Nastaliq needs room.** Text is ≥18px (1.15rem), headings 1.5rem, and line-height is 2.5 (see §4a). Bold (700) is used
    only for short labels. Long bold Nastaliq showed letter-joining gaps in Chromium (for example "سید ھی"), so answer
    paragraphs use the regular weight (400) at a larger size.
 9. **Cheap to run.** No new fonts, images or libraries. Animation uses only opacity and transform (the REC dot and
@@ -103,7 +103,9 @@ dark mode.
   is an outlined red one. **The card scrolls into view so the ✓/✗ is on screen.** Before, at 390×844, the buttons
   fell below the fold.
 - **Shortcuts:**
-  - The three feature tiles have their icon in a white disc, so 👣 and 🐐 stay visible on dark green and purple.
+  - **Start Trip is a full-width tile** (icon beside the label), so "سفر شروع کریں" stays on one line even at 360px.
+    Herd and Reminders sit side by side underneath.
+  - The feature tiles have their icon in a white disc, so 👣 and 🐐 stay visible on dark green and purple.
   - Reminders is amber with dark ink.
   - Count badges are 30px with a dark border.
   - The trip tile, while a trip runs, gets a red outline and a REC dot.
@@ -116,7 +118,7 @@ dark mode.
   - recording: a green band "● راستہ ریکارڈ ہو رہا ہے"
   - not recording: the existing amber banner (`.warn-line.gps`), now 48px and bold
 - The screen-off note is larger, with a 📱 icon.
-- **Stats:** ⏱ / 👣 / 🏠 next to 1.7rem numbers. Recorded distance is underlined dotted when the trip has gaps.
+- **Stats:** each cell is [icon, 8px gap, 1.6rem number] on one row, with the label underneath. Recorded distance is underlined dotted when the trip has gaps.
 - **Actions:**
   - "یہ جگہ یاد رکھو" (📍, orange) and "واپسی کا راستہ" (🏠, blue) are side by side, 92px tall.
   - "سفر ختم کریں" (⏹, dark) is full width below them, separated by a gap.
@@ -131,19 +133,20 @@ dark mode.
   - green "✓ جگہ نوٹ کر لی · گھر سے 6.4 کلومیٹر"
   - amber when GPS is stale, poor or missing
 - The input is 60px with a 68px mic.
-- **Tags:** an equal 5-column grid of 84px buttons with a large icon. The selected tag gets a fill, a thicker border
+- **Tags:** a 3-column grid of 84px buttons (icon on its own line above a one-line label). The selected tag gets a fill, a thicker border
   **and a ✓ badge**, so it does not rely on colour alone.
 - Save is an orange (place colour) 64px button at the bottom.
 
 ### Herd
 - The species icon sits in the card header.
 - **Boxes:**
-  - Confirmed: solid green, ✓ and a 2.8rem number.
-  - Estimate: dashed and hatched, with ≈ and the number in **full-contrast ink**. Before, it was grey italic, which
+  - Confirmed: solid green, ✓ and a 2.6rem number, labelled "تصدیق شدہ گنتی".
+  - Estimate: dashed and hatched, with ≈, the number in **full-contrast ink**, the label "اندازہ (تصدیق نہیں)", and
+    the recorded changes as bare digits "+0 / −2". Before, it was grey italic, which
     was hard to read in sun.
   - Never counted: dashed amber "?".
 - Event rows are now in Urdu ("فروخت · آج") with a coloured −2 / +1. Before, they were English "sale · today".
-- "Count now" (🔢, purple) and "Record change" (±) are 64px.
+- "Count now" (🔢, purple) and "Record change" (±) are 64px, with the icon above a one-line label.
 - "Add species" is a 64px dashed purple button instead of a text link.
 - Count pad:
   - species chips have animal icons
@@ -207,10 +210,45 @@ dark mode.
 
 | Element | Size | Weight | Line height |
 |---|---|---|---|
-| Urdu (Noto Nastaliq) | 1.15rem | 400; 700 for short labels | 2 |
-| Big Urdu | 1.5rem | 400 for answer paragraphs | 2 |
-| English subtitle | .78rem in `--muted` | — | — |
+| Urdu (Noto Nastaliq) | 1.15rem | 400; 700 for short labels | 2.5 (`--ur-lh`) |
+| Big Urdu | 1.5rem | 400 for answer paragraphs | 2.5 |
+| English subtitle | .78rem in `--muted`, 8px below the Urdu | — | 1.3 |
 | Numbers | 1.7–3rem, system sans | 800 | — |
+
+### 4a. Label spacing (checked automatically)
+
+The first redesign looked cluttered: the Urdu line sat on its English subtitle, emojis touched words, and some
+labels ran to the edge of their box. These rules fix that. `app/tests/layout.mjs` enforces them at 390×844 and
+360×740, in light and dark, across home (empty, with an answer, with a read-back), trip, way back, naming, rating,
+reminder pop-up, herd (with an estimated, a stale and a never-counted species), count and event pads, reminders,
+history, map and settings.
+
+| Token | Value | Rule |
+|---|---|---|
+| `--ur-lh` | 2.5 | Line-height of Urdu text. Noto Nastaliq's glyph box (font ascent + descent) is about 2.5em, so at 2.5 the ink stays inside the line box. With the old 2.0, letters stuck out about 0.25em above and below and touched borders and subtitles |
+| `--sub-gap` | 8px | Clear space between an Urdu line and its English subtitle (`.tx > .ur:not(:last-child)`). It drops to 4px in the small secondary buttons and the place tags |
+| `--ic-gap` | 10px | Icon to text. Every emoji or icon is its own `.ic` box (the `I` / `Lab` helpers in App.tsx), never inline in a sentence. Icons use the system font, so the emoji's box isn't inflated by Nastaliq's metrics |
+| `--pad-in` | 10px | Minimum horizontal padding between text and any box border |
+
+The check measures real glyph boxes with `Range.getClientRects()`, not element boxes, and asserts:
+1. Urdu and English glyph boxes don't intersect, with ≥4px between them.
+2. Every visible text node and icon lies inside its nearest box (button, card, tile, modal, answer, pill, herd box),
+   inset by 2px. Content scrolled inside a modal counts as inside.
+3. No icon overlaps any sibling text or icon.
+
+Result: **2026 violations before → 0 after.**
+
+To keep labels inside their boxes, a few UI-chrome labels were shortened. The meaning is kept, and every text the
+e2e relies on is unchanged.
+
+| Before | After |
+|---|---|
+| "آخری تصدیق شدہ گنتی" | "تصدیق شدہ گنتی" |
+| "اندازاً اب (تصدیق شدہ نہیں)" | "اندازہ (تصدیق نہیں)" |
+| "درج شدہ: +0 / −2" | "+0 / −2" |
+| "درج شدہ تبدیلیاں / کل تعداد معلوم نہیں" (never-counted box) | "درج تبدیلیاں / کل معلوم نہیں" |
+
+The full sentences "کوئی تصدیق شدہ گنتی نہیں" and the stale and never-counted warnings stay as they were.
 
 **Spacing and targets.**
 - 16px side gutter, 10–12px gaps.

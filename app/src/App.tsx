@@ -43,6 +43,13 @@ function T({ ur, en, big, emph }: { ur: string; en?: string; big?: boolean; emph
   return <span className={big ? 'tx big' : 'tx'}><span className="ur" dir="rtl">{emph ? <Emph s={ur} /> : ur}</span>{showEn && en && <span className="en">{en}</span>}</span>
 }
 
+/** An icon in its own box (never inline-touching text). */
+function I({ c }: { c: string }) { return <span className="ic" aria-hidden="true">{c}</span> }
+/** Icon + label row, RTL: the icon sits at the start with a fixed gap. */
+function Lab({ ic, ...t }: { ic: string; ur: string; en?: string; big?: boolean; emph?: boolean }) {
+  return <span className="lab" dir="rtl"><I c={ic} /><T {...t} /></span>
+}
+
 function useFix() { const [f, setF] = useState<Fix>(); useEffect(() => onFix(setF), []); return f }
 function useTick(ms = 1000) { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s(x => x + 1), ms); return () => clearInterval(i) }, [ms]) }
 
@@ -166,19 +173,19 @@ function TripScreen({ go, onEnded }: { go: (s: Screen) => void; onEnded: (id: nu
     <div className="trip-screen">
       <MapView focus={focus} className="map trip-map" />
       <GpsBanner />
-      <p className={`screen-note ${hold ? '' : 'strong'}`}><T ur={hold ? '📱 CHOTA کھلا رکھیں — اسکرین بند ہو تو راستہ ریکارڈ نہیں ہوتا' : '⚠️ یہ فون اسکرین جاگتی نہیں رکھ سکتا: اسکرین بند ہوتے ہی راستہ ریکارڈ ہونا رک جائے گا۔'}
+      <p className={`screen-note ${hold ? '' : 'strong'}`}><Lab ic={hold ? '📱' : '⚠️'} ur={hold ? 'CHOTA کھلا رکھیں — اسکرین بند ہو تو راستہ ریکارڈ نہیں ہوتا' : 'یہ فون اسکرین جاگتی نہیں رکھ سکتا: اسکرین بند ہوتے ہی راستہ ریکارڈ ہونا رک جائے گا۔'}
         en={hold ? 'Keep CHOTA open — no trail is recorded with the screen off' : 'This phone cannot keep the screen on: recording stops when the screen turns off.'} /></p>
       <div className="stats">
-        <div><b dir="ltr"><span className="ic">⏱</span>{Math.floor(mins / 60)}:{String(mins % 60).padStart(2, '0')}</b><T ur="وقت" en="time" /></div>
-        <div className={gaps ? 'gappy' : ''}><b dir="ltr"><span className="ic">{ICON.trip}</span>{fmtKm(stats?.distanceM ?? 0)}</b><T ur={gaps ? `ریکارڈ · ${gaps} وقفے` : 'ریکارڈ شدہ'} en={gaps ? `recorded · ${gaps} gap${gaps > 1 ? 's' : ''}` : 'recorded'} /></div>
-        <div><b dir="ltr"><span className="ic">{ICON.home}</span>{hd !== undefined ? fmtKm(hd) : '—'}</b><T ur={`گھر ${hd !== undefined ? DIR_UR[compass(bearingDeg(fix!, home!))] : ''}`} en="to home" /></div>
+        <div><I c="⏱" /><b dir="ltr">{Math.floor(mins / 60)}:{String(mins % 60).padStart(2, '0')}</b><T ur="وقت" en="time" /></div>
+        <div className={gaps ? 'gappy' : ''}><I c={ICON.trip} /><b dir="ltr">{fmtKm(stats?.distanceM ?? 0)}</b><T ur={gaps ? `ریکارڈ · ${gaps} وقفے` : 'ریکارڈ شدہ'} en={gaps ? `recorded · ${gaps} gap${gaps > 1 ? 's' : ''}` : 'recorded'} /></div>
+        <div><I c={ICON.home} /><b dir="ltr">{hd !== undefined ? fmtKm(hd) : '—'}</b><T ur={`گھر ${hd !== undefined ? DIR_UR[compass(bearingDeg(fix!, home!))] : ''}`} en="to home" /></div>
       </div>
       {/* Stable layout: the big buttons never move. Anything that appears (answers) appears below them. */}
       <div className="trip-actions">
         <button className="big-btn place" onClick={() => setNaming(true)}><span className="ic">{ICON.place}</span><T ur="یہ جگہ یاد رکھو" en="Remember this place" /></button>
         <button className="big-btn back" onClick={async () => { const a = await answer('wapas ka rasta dikhao'); setMsg(a); setFocus({ ...a.map, wayBack: true }); speak(a.ur) }}>
           <span className="ic">{ICON.home}</span><T ur="واپسی کا راستہ" en="Way back" /></button>
-        <button className="big-btn end" onClick={async () => { const id = await endTrip(); if (id) onEnded(id) }}>⏹ <T ur="سفر ختم کریں" en="End trip" /></button>
+        <button className="big-btn end" onClick={async () => { const id = await endTrip(); if (id) onEnded(id) }}><I c="⏹" /><T ur="سفر ختم کریں" en="End trip" /></button>
       </div>
       <div className="trip-voice"><VoiceAsk onAction={a => { if ('rate' in a) onEnded(a.rate) }} onMap={m => { if (m) setFocus(m) }} /></div>
       {msg && <div className={`answer small f-${FEATURE_OF[msg.intent] ?? 'none'}`}><T ur={msg.ur} en={msg.en} emph /></div>}
@@ -203,7 +210,7 @@ function GpsBanner() {
   const [ur, en] = fs.state === 'none' ? ['GPS ابھی نہیں ملا — راستہ ریکارڈ نہیں ہو رہا', 'No GPS yet — the trail is not being recorded']
     : fs.state === 'stale' ? [`آخری GPS ${spanUr(fs.ageMs)} پہلے — راستہ ریکارڈ نہیں ہو رہا`, `Last GPS ${spanEn(fs.ageMs)} ago — the trail is not being recorded`]
     : [`GPS کمزور (±${Math.round(fix?.acc ?? 0)} میٹر) — یہ حصہ ریکارڈ نہیں ہو رہا`, `Weak GPS (±${Math.round(fix?.acc ?? 0)} m) — this part is not being recorded`]
-  return <div className="warn-line gps"><T ur={`⚠️ ${ur}`} en={en} /></div>
+  return <div className="warn-line gps"><Lab ic="⚠️" ur={ur} en={en} /></div>
 }
 
 /** On launch: a trip left open from earlier. Never silently extend it to "now". */
@@ -215,8 +222,8 @@ function ForgottenTrip({ o, onDone }: { o: OpenTrip; onDone: (endedId?: number) 
       <T ur={`ایک سفر ${agoUr(o.startedAt)} (${spanUr(now() - o.startedAt)} پہلے) شروع ہوا تھا اور ابھی تک کھلا ہے۔`} en={`A trip started ${spanEn(now() - o.startedAt)} ago is still open.`} big emph />
       <p className="spot bad"><T ur={last ? `آخری ریکارڈ شدہ جگہ ${spanUr(now() - last)} پہلے کی ہے۔ اس کے بعد کچھ ریکارڈ نہیں ہوا۔` : 'اس سفر میں کوئی جگہ ریکارڈ نہیں ہوئی۔'}
         en={last ? `The last recorded point was ${spanEn(now() - last)} ago. Nothing was recorded after that.` : 'No point was recorded on this trip.'} emph /></p>
-      <button className="big-btn end" onClick={async () => onDone(await endTrip(last ?? o.startedAt))}>⏹ <T ur="آخری ریکارڈ شدہ جگہ پر ختم کریں" en="End it at the last recorded point" /></button>
-      <button className="big-btn ok" onClick={() => { resumeTrip(); onDone() }}>▶︎ <T ur="میں ابھی اسی سفر پر ہوں" en="I am still on this trip" /></button>
+      <button className="big-btn end" onClick={async () => onDone(await endTrip(last ?? o.startedAt))}><I c="⏹" /><T ur="آخری ریکارڈ شدہ جگہ پر ختم کریں" en="End it at the last recorded point" /></button>
+      <button className="big-btn ok" onClick={() => { resumeTrip(); onDone() }}><I c="▶︎" /><T ur="میں ابھی اسی سفر پر ہوں" en="I am still on this trip" /></button>
       <p className="muted note"><T ur="جاری رکھنے پر درمیان کا وقفہ ریکارڈ میں وقفہ ہی رہے گا۔" en="If you continue, the silence stays in the record as a gap." /></p>
     </Modal>
   )
@@ -254,20 +261,20 @@ function NamePlace({ onClose }: { onClose: (a?: Answer) => void }) {
   const bad = fs.state === 'none' || fs.state === 'stale'
   return (
     <Modal onClose={() => onClose()}>
-      <T ur={`${ICON.place} اس جگہ کا نام؟`} en="Name this place" big />
-      <p className={`spot ${bad || fs.state === 'poor' ? 'bad' : 'ok'}`}><T
-        ur={fs.state === 'none' ? '⚠️ ابھی GPS نہیں ملا' : fs.state === 'stale' ? '⚠️ GPS پرانا ہے — جگہ محفوظ نہیں ہو گی' : `✓ جگہ نوٹ کر لی${where !== undefined ? ` · گھر سے ${fmtKmUr(where)}` : ''}${fs.state === 'poor' ? ` · GPS کمزور ±${Math.round(spot.fix!.acc)} میٹر` : ''}`}
+      <Lab ic={ICON.place} ur="اس جگہ کا نام؟" en="Name this place" big />
+      <p className={`spot ${bad || fs.state === 'poor' ? 'bad' : 'ok'}`}><Lab ic={bad ? '⚠️' : '✓'}
+        ur={fs.state === 'none' ? 'ابھی GPS نہیں ملا' : fs.state === 'stale' ? 'GPS پرانا ہے — جگہ محفوظ نہیں ہو گی' : `جگہ نوٹ کر لی${where !== undefined ? ` · گھر سے ${fmtKmUr(where)}` : ''}${fs.state === 'poor' ? ` · GPS کمزور ±${Math.round(spot.fix!.acc)} میٹر` : ''}`}
         en={fs.state === 'none' ? 'No GPS fix yet' : fs.state === 'stale' ? 'GPS is stale — the place will not be saved' : `Spot captured${where !== undefined ? ` · ${fmtKm(where)} from home` : ''}${isSimulated() ? ' · demo walk paused' : ''}`} emph /></p>
       <div className="askbar">
         <input autoFocus dir="auto" value={name} onChange={e => setName(e.target.value)} placeholder="پرانا چارہ" onKeyDown={e => e.key === 'Enter' && save()} aria-label="Place name" />
         {canListen() && <button className={listening ? 'mic on' : 'mic'} aria-label="Speak the name" onClick={mic}>{listening ? '■' : '🎤'}</button>}
       </div>
-      {listening && <p className="hint listening"><T ur="🔴 سن رہا ہوں… جگہ کا نام بولیں" en="Listening… say the name" /></p>}
-      {micErr && <div className="warn-line"><T ur={`🎤 ${micErr[0]}`} en={micErr[1]} /></div>}
+      {listening && <p className="hint listening"><Lab ic="🔴" ur="سن رہا ہوں… جگہ کا نام بولیں" en="Listening… say the name" /></p>}
+      {micErr && <div className="warn-line"><Lab ic="🎤" ur={micErr[0]} en={micErr[1]} /></div>}
       <div className="chips tags">{PLACE_TAGS.map(t => (
         <button key={t.type} className={tag === t.type ? 'on' : ''} aria-pressed={tag === t.type} onClick={() => setType(t.type)}>
           <span className="tag-icon">{t.icon}</span><T ur={t.ur} en={t.en} /></button>))}</div>
-      <button className="big-btn place" disabled={!name.trim() && !type} onClick={save}>✓ <T ur="محفوظ کریں" en="Save" /></button>
+      <button className="big-btn place" disabled={!name.trim() && !type} onClick={save}><I c="✓" /><T ur="محفوظ کریں" en="Save" /></button>
     </Modal>
   )
 }
@@ -278,15 +285,15 @@ function RateTrip({ id, onDone }: { id: number; onDone: () => void }) {
   const rate = async (r: Rating | null) => { await db.trips.update(id, { rating: r }); onDone() }
   return (
     <Modal onClose={() => rate(null)}>
-      <T ur={`✓ ${ICON.trip} سفر محفوظ ہو گیا`} en="Trip saved" />
+      <Lab ic="✓" ur="سفر محفوظ ہو گیا" en="Trip saved" />
       {t && <p className="muted note"><T ur={`${fmtKmUr(t.distanceM ?? 0)} ریکارڈ · گھر سے زیادہ سے زیادہ ${fmtKmUr(t.furthestFromHomeM ?? 0)}${t.direction ? ` · ${DIR_UR[t.direction as keyof typeof DIR_UR]}` : ''}`}
         en={`${fmtKm(t.distanceM ?? 0)} recorded · max ${fmtKm(t.furthestFromHomeM ?? 0)} from home${t.direction ? ` · ${t.direction}` : ''}`} emph /></p>}
-      {t?.gapCount ? <p className="warn-line"><T ur={`⚠️ ${t.gapCount} حصے (${spanUr(t.gapMs ?? 0)}) ریکارڈ نہیں ہوئے`} en={`${t.gapCount} part(s) (${spanEn(t.gapMs ?? 0)}) were not recorded`} /></p> : null}
-      <T ur="🌿 آج چارہ کیسا تھا؟" en="How was the grazing today?" big />
+      {t?.gapCount ? <p className="warn-line"><Lab ic="⚠️" ur={`${t.gapCount} حصے (${spanUr(t.gapMs ?? 0)}) ریکارڈ نہیں ہوئے`} en={`${t.gapCount} part(s) (${spanEn(t.gapMs ?? 0)}) were not recorded`} /></p> : null}
+      <Lab ic="🌿" ur="آج چارہ کیسا تھا؟" en="How was the grazing today?" big />
       <div className="rate big3">
-        <button className="good" onClick={() => rate('good')}>🟢<T ur="اچھا" en="Good" big /></button>
-        <button className="okay" onClick={() => rate('okay')}>🟡<T ur="ٹھیک" en="Okay" big /></button>
-        <button className="poor" onClick={() => rate('poor')}>🔴<T ur="کمزور" en="Poor" big /></button>
+        <button className="good" onClick={() => rate('good')}><I c="🟢" /><T ur="اچھا" en="Good" big /></button>
+        <button className="okay" onClick={() => rate('okay')}><I c="🟡" /><T ur="ٹھیک" en="Okay" big /></button>
+        <button className="poor" onClick={() => rate('poor')}><I c="🔴" /><T ur="کمزور" en="Poor" big /></button>
       </div>
       <button className="link skip" onClick={() => rate(null)}><T ur="چھوڑیں" en="Skip" /></button>
     </Modal>
@@ -361,23 +368,23 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
         </button>)}
       <div className="askbar">
         <input ref={input} dir="auto" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && ask(q)}
-          placeholder={big ? '⌨️ یا یہاں لکھیں…' : 'بولیں یا لکھیں…'} aria-label="Ask Chota" />
+          placeholder={big ? 'یا یہاں لکھیں…' : 'بولیں یا لکھیں…'} aria-label="Ask Chota" />
         {!big && <button className={listening ? 'mic on' : 'mic'} aria-label="Speak" aria-pressed={listening} onClick={mic}>{listening ? '■' : '🎤'}</button>}
         <button className="go" onClick={() => ask(q)} aria-label="Send">➤</button>
       </div>
-      {listening && q && <p className="hint listening"><T ur="🔴 جو سنا وہ اوپر لکھا جا رہا ہے" en="What I hear is written above" /></p>}
-      {heard && <p className="hint"><T ur="✓ یہ سنا — جواب آ رہا ہے…" en="Got it — answering…" /></p>}
-      {micErr && <div className="warn-line"><T ur={`🎤 ${micErr[0]}`} en={micErr[1]} /></div>}
-      {kbHint && !q && <div className="note-line kb-hint"><T ur="⌨️ کی بورڈ کے اوپر والے 🎤 کو دبا کر بولیں، پھر ➤ دبائیں" en="Tap the 🎤 on your keyboard and speak, then press ➤ (works offline if Urdu voice typing is downloaded)" /></div>}
+      {listening && q && <p className="hint listening"><Lab ic="🔴" ur="جو سنا وہ اوپر لکھا جا رہا ہے" en="What I hear is written above" /></p>}
+      {heard && <p className="hint"><Lab ic="✓" ur="یہ سنا — جواب آ رہا ہے…" en="Got it — answering…" /></p>}
+      {micErr && <div className="warn-line"><Lab ic="🎤" ur={micErr[0]} en={micErr[1]} /></div>}
+      {kbHint && !q && <div className="note-line kb-hint"><Lab ic="⌨️" ur="کی بورڈ کے اوپر والے 🎤 کو دبا کر بولیں، پھر ➤ دبائیں" en="Tap the 🎤 on your keyboard and speak, then press ➤ (works offline if Urdu voice typing is downloaded)" /></div>}
       {cur && (
         <div ref={ansRef} className={`answer ${big ? '' : 'small'} ${cur.a.ok ? '' : 'muted'} ${feat ? `f-${feat}` : ''} ${cur.a.pending ? 'pending' : ''}`}>
-          <div className="ahead">{feat && <span className="fic">{ICON[feat]}</span>}<div className="q" dir="auto">🎤 “{cur.q}”</div></div>
+          <div className="ahead">{feat && <span className="fic">{ICON[feat]}</span>}<I c="🎤" /><div className="q" dir="auto">“{cur.q}”</div></div>
           <T ur={cur.a.ur} en={cur.a.en} big={big} emph />
           {hasUrduVoice() && <button className="speak" onClick={() => speak(cur.a.ur)} aria-label="Speak again">🔊</button>}
-          {!hasUrduVoice() && big && <p className="muted no-voice"><T ur="🔇 اس فون پر اردو آواز نہیں، اس لیے جواب بولا نہیں گیا" en="No Urdu voice on this phone, so the answer isn't spoken aloud (see Settings)" /></p>}
+          {!hasUrduVoice() && big && <p className="muted no-voice"><Lab ic="🔇" ur="اس فون پر اردو آواز نہیں، اس لیے جواب بولا نہیں گیا" en="No Urdu voice on this phone, so the answer isn't spoken aloud (see Settings)" /></p>}
           {cur.a.pending && <div className="rate confirm">
-            <button className="good" onClick={() => resolve(true)}>✓<T ur={lbl[0]} en={lbl[1]} /></button>
-            <button className="poor" onClick={() => resolve(false)}>✗<T ur={lbl[2]} en={lbl[3]} /></button>
+            <button className="good" onClick={() => resolve(true)}><I c="✓" /><T ur={lbl[0]} en={lbl[1]} /></button>
+            <button className="poor" onClick={() => resolve(false)}><I c="✗" /><T ur={lbl[2]} en={lbl[3]} /></button>
           </div>}
         </div>
       )}
@@ -412,10 +419,10 @@ function Reminders() {
         {canListen() && <button className={listening ? 'mic on' : 'mic'} aria-label="Speak the reminder" aria-pressed={listening} onClick={mic}>{listening ? '■' : '🎤'}</button>}
         <button className="go" onClick={() => add()} aria-label="Add reminder">＋</button>
       </div>
-      {listening && <p className="hint listening"><T ur="🔴 سن رہا ہوں… کب اور کیا یاد دلانا ہے؟" en="Listening… what, and when?" /></p>}
-      {micErr && <div className="warn-line"><T ur={`🎤 ${micErr[0]}`} en={micErr[1]} /></div>}
+      {listening && <p className="hint listening"><Lab ic="🔴" ur="سن رہا ہوں… کب اور کیا یاد دلانا ہے؟" en="Listening… what, and when?" /></p>}
+      {micErr && <div className="warn-line"><Lab ic="🎤" ur={micErr[0]} en={micErr[1]} /></div>}
       {msg && <div className="answer small f-rem"><T ur={msg.ur} en={msg.en} emph /></div>}
-      {rs.length === 0 && <p className="muted note"><T ur="🔔 کوئی یاد دہانی نہیں" en="No reminders" /></p>}
+      {rs.length === 0 && <p className="muted note"><Lab ic="🔔" ur="کوئی یاد دہانی نہیں" en="No reminders" /></p>}
       {rs.map(r => (
         <div key={r.id} className={`card rem ${r.status} ${r.source}`}>
           <div className="when"><span className="ic">{r.status === 'fired' ? '🔔' : '⏰'}</span><T ur={r.status === 'fired' ? 'ابھی' : dueUr(r.dueAt)} en={r.status === 'fired' ? 'now' : dueEn(r.dueAt)} emph />{r.source === 'system' && <span className="badge">CHOTA</span>}</div>
@@ -426,7 +433,7 @@ function Reminders() {
           </div>
         </div>
       ))}
-      {done.length > 0 && <details><summary><T ur={`✓ مکمل (${done.length})`} en="Done" /></summary>{done.map(r => <div key={r.id} className="card done" dir="auto">✓ {r.text}</div>)}</details>}
+      {done.length > 0 && <details><summary><Lab ic="✓" ur={`مکمل (${done.length})`} en="Done" /></summary>{done.map(r => <div key={r.id} className="card done" dir="auto">✓ {r.text}</div>)}</details>}
     </div>
   )
 }
@@ -438,11 +445,11 @@ function FiredReminder({ r, onClose, go }: { r: Reminder; onClose: () => void; g
     <Modal onClose={onClose}>
       <span className="emoji">{isHerd ? `${ICON.rem}${ICON.herd}` : ICON.rem}</span>
       <div className="ur big" dir="auto">{r.text}</div>
-      {r.source === 'user' && lateMs > LATE_MS && <p className="warn-line"><T ur={`⏰ یہ ${spanUr(lateMs)} دیر سے دکھائی جا رہی ہے — وقت پر ایپ بند تھی۔`} en={`Shown ${spanEn(lateMs)} late — the app was closed when it was due.`} /></p>}
-      {isHerd && <button className="big-btn herdc" onClick={() => { db.reminders.update(r.id!, { status: 'done' }); onClose(); go('herd') }}>🔢 <T ur="ابھی گنتی کریں" en="Count now" /></button>}
+      {r.source === 'user' && lateMs > LATE_MS && <p className="warn-line"><Lab ic="⏰" ur={`یہ ${spanUr(lateMs)} دیر سے دکھائی جا رہی ہے — وقت پر ایپ بند تھی۔`} en={`Shown ${spanEn(lateMs)} late — the app was closed when it was due.`} /></p>}
+      {isHerd && <button className="big-btn herdc" onClick={() => { db.reminders.update(r.id!, { status: 'done' }); onClose(); go('herd') }}><I c="🔢" /><T ur="ابھی گنتی کریں" en="Count now" /></button>}
       <div className="rate">
-        <button className="good" onClick={() => { db.reminders.update(r.id!, { status: 'done' }); onClose() }}>✓<T ur="ٹھیک ہے" en="OK" /></button>
-        <button onClick={() => { db.reminders.update(r.id!, { status: 'pending', dueAt: now() + 3600000 }); onClose() }}>⏰<T ur="بعد میں" en="Later" /></button>
+        <button className="good" onClick={() => { db.reminders.update(r.id!, { status: 'done' }); onClose() }}><I c="✓" /><T ur="ٹھیک ہے" en="OK" /></button>
+        <button onClick={() => { db.reminders.update(r.id!, { status: 'pending', dueAt: now() + 3600000 }); onClose() }}><I c="⏰" /><T ur="بعد میں" en="Later" /></button>
       </div>
     </Modal>
   )
@@ -461,7 +468,7 @@ function Herd() {
   const [eventFor, setEventFor] = useState<Species>()
   return (
     <div className="pad">
-      {all.length === 0 && <div className="card"><T ur={`${ICON.herd} ابھی کوئی گنتی نہیں۔ اپنے جانور گن کر یہاں درج کریں۔`} en="No count yet. Count your animals and enter it here." /></div>}
+      {all.length === 0 && <div className="card"><Lab ic={ICON.herd} ur={`ابھی کوئی گنتی نہیں۔ اپنے جانور گن کر یہاں درج کریں۔`} en="No count yet. Count your animals and enter it here." /></div>}
       {all.map(h => <HerdCard key={h.species} h={h} onCount={() => setCounting(h.species)} onEvent={() => setEventFor(h.species)} />)}
       <button className="addbtn" onClick={() => setCounting('new')}><span className="ic">＋</span><T ur="نئی قسم شامل کریں / گنتی" en="Add species / count" /></button>
       {counting && <CountPad species={counting === 'new' ? undefined : counting} onClose={() => setCounting(undefined)} />}
@@ -477,19 +484,19 @@ function HerdCard({ h, onCount, onEvent }: { h: HerdStatus; onCount: () => void;
       <div className="herd-head"><span className="ic">{SPECIES_IC[h.species]}</span><T ur={SPECIES_UR[h.species]} en={SPECIES_EN[h.species]} big /></div>
       <div className="herd-nums">
         {c
-          ? <div className="confirmed"><b dir="ltr">✓ {c.count}</b><T ur="آخری تصدیق شدہ گنتی" en="Last confirmed count" /><small><T ur={agoUr(c.confirmedAt)} en={`${new Date(c.confirmedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · ${agoEn(c.confirmedAt)}`} emph /></small></div>
+          ? <div className="confirmed"><b dir="ltr">✓ {c.count}</b><T ur="تصدیق شدہ گنتی" en="Confirmed count" /><small><T ur={agoUr(c.confirmedAt)} en={`${new Date(c.confirmedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · ${agoEn(c.confirmedAt)}`} emph /></small></div>
           : <div className="confirmed none"><b>?</b><T ur="کوئی تصدیق شدہ گنتی نہیں" en="Never counted" /></div>}
         {c && h.eventsSince.length > 0
-          ? <div className="estimate"><b dir="ltr">≈ {h.estimate}</b><T ur="اندازاً اب (تصدیق شدہ نہیں)" en="Estimate, not confirmed" />
-              <small><T ur={`درج شدہ: +${h.additions} / −${h.removals}`} en={`Recorded since: +${h.additions} / −${h.removals}`} /></small></div>
-          : c ? <div className="estimate quiet"><T ur="اس کے بعد کوئی تبدیلی درج نہیں" en="No change recorded since" /></div>
-          : <div className="estimate"><b dir="ltr">+{h.additions} / −{h.removals}</b><T ur="درج شدہ تبدیلیاں" en="Recorded changes" /><small><T ur="کل تعداد معلوم نہیں" en="Total unknown" /></small></div>}
+          ? <div className="estimate"><b dir="ltr">≈ {h.estimate}</b><T ur="اندازہ (تصدیق نہیں)" en="Estimate" />
+              <small dir="ltr">+{h.additions} / −{h.removals}</small></div>
+          : c ? <div className="estimate quiet"><T ur="بعد میں کوئی تبدیلی درج نہیں" en="No change since" /></div>
+          : <div className="estimate"><b dir="ltr">+{h.additions} / −{h.removals}</b><T ur="درج تبدیلیاں" en="Changes" /><small><T ur="کل معلوم نہیں" en="Total unknown" /></small></div>}
       </div>
       {h.eventsSince.length > 0 && <ul className="events">{h.eventsSince.slice(-4).map(e => (
         <li key={e.id}><span className={`d ${e.delta > 0 ? 'plus' : 'minus'}`} dir="ltr">{e.delta > 0 ? '+' : ''}{e.delta}</span>
           <T ur={`${EVENT_UR[e.type] ?? e.type} · ${agoUr(e.at)}`} en={`${e.type} · ${agoEn(e.at)}`} />{e.sourceText && <q dir="auto">{e.sourceText}</q>}</li>))}</ul>}
-      {h.status === 'none' && <div className="warn-line"><T ur="⚠️ گنتی کر کے درج کریں، تب ہی کل تعداد بتائی جا سکتی ہے۔" en="Count the animals to set a baseline; until then the total is unknown." /></div>}
-      {h.status === 'stale' && <div className="warn-line"><T ur={`⚠️ ${h.daysSinceConfirmed} دن سے دوبارہ گنتی نہیں ہوئی۔ اندازہ پرانا ہو سکتا ہے۔`} en={`Not physically reconfirmed for ${h.daysSinceConfirmed} days. The estimate may be stale.`} emph /></div>}
+      {h.status === 'none' && <div className="warn-line"><Lab ic="⚠️" ur="گنتی کر کے درج کریں، تب ہی کل تعداد بتائی جا سکتی ہے۔" en="Count the animals to set a baseline; until then the total is unknown." /></div>}
+      {h.status === 'stale' && <div className="warn-line"><Lab ic="⚠️" ur={`${h.daysSinceConfirmed} دن سے دوبارہ گنتی نہیں ہوئی۔ اندازہ پرانا ہو سکتا ہے۔`} en={`Not physically reconfirmed for ${h.daysSinceConfirmed} days. The estimate may be stale.`} emph /></div>}
       {h.status === 'estimated' && <div className="note-line"><T ur="اندازہ صرف درج شدہ واقعات پر مبنی ہے" en="Estimate is based only on recorded events" /></div>}
       <div className="actions">
         <button className="primary" onClick={onCount}><span className="ic">🔢</span><T ur="ابھی گنتی کریں" en="Count now" /></button>
@@ -517,10 +524,10 @@ function CountPad({ species, onClose }: { species?: Species; onClose: () => void
     </Modal>)
   return (
     <Modal onClose={onClose}>
-      <T ur={`${SPECIES_IC[sp]} جانور گن کر تعداد لکھیں`} en="Count and enter the number" big />
+      <Lab ic={SPECIES_IC[sp]} ur="جانور گن کر تعداد لکھیں" en="Count and enter the number" big />
       {!species && <div className="chips species">{(['goat', 'sheep', 'camel', 'cattle'] as Species[]).map(s => <button key={s} className={sp === s ? 'on' : ''} aria-pressed={sp === s} onClick={() => setSp(s)}><span className="ic">{SPECIES_IC[s]}</span>{SPECIES_UR[s]}</button>)}</div>}
       <input className="num" inputMode="numeric" autoFocus value={n} onChange={e => setN(e.target.value.replace(/\D/g, ''))} placeholder="47" aria-label="Count" />
-      <button className="big-btn ok" onClick={save}>✓ <T ur={`${SPECIES_UR_OBL[sp]} کی تصدیق`} en="Confirm count" /></button>
+      <button className="big-btn ok" onClick={save}><I c="✓" /><T ur={`${SPECIES_UR_OBL[sp]} کی تصدیق`} en="Confirm count" /></button>
     </Modal>
   )
 }
@@ -529,10 +536,10 @@ function EventPad({ species, onClose }: { species: Species; onClose: () => void 
   const rec = async (type: HerdEventType) => { await db.herdEvents.add({ species, type, delta: signOf(type) * qty, at: now() }); onClose() }
   return (
     <Modal onClose={onClose}>
-      <T ur={`${SPECIES_IC[species]} ${SPECIES_UR[species]} — کیا ہوا؟`} en="What happened?" big />
+      <Lab ic={SPECIES_IC[species]} ur={`${SPECIES_UR[species]} — کیا ہوا؟`} en="What happened?" big />
       <div className="stepper"><button onClick={() => setQty(q => Math.max(1, q - 1))} aria-label="less">−</button><b>{qty}</b><button onClick={() => setQty(q => q + 1)} aria-label="more">+</button></div>
-      <div className="rate">{ADD_TYPES.map(([t, u, e]) => <button key={t} className="good" onClick={() => rec(t)}>＋<T ur={u} en={e} /></button>)}</div>
-      <div className="rate grid2">{REM_TYPES.map(([t, u, e]) => <button key={t} className="poor" onClick={() => rec(t)}>−<T ur={u} en={e} /></button>)}</div>
+      <div className="rate">{ADD_TYPES.map(([t, u, e]) => <button key={t} className="good" onClick={() => rec(t)}><I c="＋" /><T ur={u} en={e} /></button>)}</div>
+      <div className="rate grid2">{REM_TYPES.map(([t, u, e]) => <button key={t} className="poor" onClick={() => rec(t)}><I c="−" /><T ur={u} en={e} /></button>)}</div>
     </Modal>
   )
 }
@@ -547,7 +554,7 @@ function MapScreen() {
       <MapView allTrips={!focus} focus={focus} className="map tall" />
       <div className="legend" dir="rtl"><span className="g"><i />اچھا</span><span className="o"><i />ٹھیک</span><span className="p"><i />کمزور</span><span className="a"><i />آج</span><span className="x"><i />ریکارڈ نہیں</span></div>
       <div className="pad">
-        {places.length === 0 && <p className="muted note"><T ur={`${ICON.place} ابھی کوئی جگہ محفوظ نہیں`} en="No places saved yet" /></p>}
+        {places.length === 0 && <p className="muted note"><Lab ic={ICON.place} ur="ابھی کوئی جگہ محفوظ نہیں" en="No places saved yet" /></p>}
         {places.map(p => (
           <button key={p.id} className="card row" dir="rtl" onClick={() => setFocus({ placeIds: [p.id!] })}>
             <span className="row-main"><span className="ic">{placeIcon(p.type)}</span><b dir="auto">{p.name}</b></span>
@@ -575,8 +582,8 @@ function History() {
             <span><T ur={agoUr(t.startedAt)} en={new Date(t.startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} /></span>
             <span className="trip-mid"><span className="num" dir="ltr">{fmtKm(t.distanceM ?? 0)}</span>
               <T ur={`${Math.round((t.endedAt! - t.startedAt) / 3600000 * 10) / 10} گھنٹے${t.direction ? ` · ${DIR_UR[t.direction as keyof typeof DIR_UR]}` : ''}`} en={`${Math.round((t.endedAt! - t.startedAt) / 3600000 * 10) / 10} h${t.direction ? ` · ${t.direction}` : ''}`} />
-              {t.gapCount ? <span className="gap-flag"><T ur={`┄ ⚠️ ${t.gapCount} وقفہ`} en={`${t.gapCount} gap${t.gapCount > 1 ? 's' : ''}`} /></span> : null}</span>
-            <span className={`chip ${t.rating ?? ''}`}>{t.rating ? `${RATING_DOT[t.rating]} ${RATING_UR[t.rating]}` : '—'}</span>
+              {t.gapCount ? <span className="gap-flag"><Lab ic="⚠️" ur={`${t.gapCount} وقفہ`} en={`${t.gapCount} gap${t.gapCount > 1 ? 's' : ''}`} /></span> : null}</span>
+            <span className={`chip ${t.rating ?? ''}`}>{t.rating ? <><I c={RATING_DOT[t.rating]} /><span className="ur">{RATING_UR[t.rating]}</span></> : '—'}</span>
           </button>
         ))}
       </div>
@@ -593,9 +600,9 @@ function Settings() {
   return (
     <div className="pad">
       <Row>
-        <T ur="🏠 گھر" en="Home" big />
+        <Lab ic="🏠" ur="گھر" en="Home" big />
         <p className="muted">{home ? `${home.lat.toFixed(5)}, ${home.lon.toFixed(5)} · ${agoEn(home.setAt)}` : '—'}</p>
-        <button className="big-btn back" disabled={!fix} onClick={() => fix && setHome(fix.lat, fix.lon, now())}>🏠 <T ur="یہ جگہ میرا گھر ہے" en="Set current location as Home" /></button>
+        <button className="big-btn back" disabled={!fix} onClick={() => fix && setHome(fix.lat, fix.lon, now())}><I c="🏠" /><T ur="یہ جگہ میرا گھر ہے" en="Set current location as Home" /></button>
       </Row>
       <Row>
         <label><input type="checkbox" checked={en} onChange={e => { lsSet('chota.en', e.target.checked ? '1' : '0'); setEn(e.target.checked) }} /> English subtitles</label>
