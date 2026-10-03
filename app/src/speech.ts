@@ -5,12 +5,15 @@ function pickVoice() {
 }
 try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice } catch { /* no TTS */ }
 
-export const hasUrduVoice = () => !!urVoice
+/** Android Chrome often lists no voices even when Google TTS has Urdu: asking for lang ur-PK still reaches it.
+ * Elsewhere (e.g. a Mac) that would read Urdu with an English voice, so only real Urdu voices are used. */
+const androidUnlisted = () => { try { return /Android/i.test(navigator.userAgent) && speechSynthesis.getVoices().length === 0 } catch { return false } }
+export const hasUrduVoice = () => !!urVoice || androidUnlisted()
 export function speak(ur: string) {
   try {
-    if (!urVoice) return false
+    if (!hasUrduVoice()) return false
     speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(ur.replace(/[⚠️"()]/g, ' ')); u.voice = urVoice; u.lang = urVoice.lang; u.rate = 0.95
+    const u = new SpeechSynthesisUtterance(ur.replace(/[⚠️"()]/g, ' ')); if (urVoice) u.voice = urVoice; u.lang = urVoice?.lang ?? 'ur-PK'; u.rate = 0.95
     speechSynthesis.speak(u); return true
   } catch { return false }
 }

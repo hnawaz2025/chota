@@ -337,7 +337,8 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
         <div className={`answer ${big ? '' : 'small'} ${cur.a.ok ? '' : 'muted'}`}>
           <div className="q" dir="auto">“{cur.q}”</div>
           <T ur={cur.a.ur} en={cur.a.en} big={big} />
-          {hasUrduVoice() && <button className="speak" onClick={() => speak(cur.a.ur)}>🔊</button>}
+          {hasUrduVoice() && <button className="speak" onClick={() => speak(cur.a.ur)} aria-label="Speak again">🔊</button>}
+          {!hasUrduVoice() && big && <p className="muted no-voice"><T ur="🔇 اس آلے پر اردو آواز نہیں، اس لیے جواب بولا نہیں گیا" en="No Urdu voice on this device, so the answer isn't spoken aloud. On Android: Settings → Text-to-speech → Google → install Urdu" /></p>}
           {cur.a.pending && <div className="rate confirm">
             <button className="good" onClick={() => resolve(true)}>✓<T ur={lbl[0]} en={lbl[1]} /></button>
             <button className="poor" onClick={() => resolve(false)}>✗<T ur={lbl[2]} en={lbl[3]} /></button>
