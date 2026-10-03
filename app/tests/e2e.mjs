@@ -106,7 +106,16 @@ await ctx.setOffline(false)
 
 // ---------------- Honest Trail ----------------
 // T1. Forgotten trip: start, walk a bit, "come back" a day later. App must ask, and end it at the last recorded point.
-await home(); await click('سفر شروع کریں'); await p.waitForTimeout(800); await p.getByText('60 m/s').click(); await p.waitForTimeout(4000); await p.getByText('⏸').click().catch(() => {})
+await home(); await click('سفر شروع کریں'); await p.waitForTimeout(800); await p.getByText('200 m/s').click(); await p.waitForTimeout(2000)
+// P1. Naming a place freezes the spot and pauses the demo walk; tag is saved; the walk resumes afterwards.
+const pct = async () => p.evaluate(() => document.querySelector('.sim').textContent.match(/(\d+)%/)[1]).then(Number)
+await click('یہ جگہ یاد رکھو'); await p.waitForTimeout(300); const p0 = await pct(); await p.waitForTimeout(2000); const p1 = await pct()
+const pm = await p.textContent('.modal'); step('P1', `naming open: walk ${p0}% -> ${p1}% · ${pm}`); expect('P1', p0 === p1 && pm.includes('demo walk paused'), 'demo walk paused while naming')
+await p.locator('.chips.tags button').first().click(); await p.fill('.modal input', 'چشمہ'); await p.locator('.modal .big-btn').click(); await p.waitForTimeout(600)
+const pa = await p.textContent('.answer.small'); const pl = (await p.evaluate(() => new Promise(r => { const q = indexedDB.open('chota'); q.onsuccess = () => { q.result.transaction('places').objectStore('places').getAll().onsuccess = e => r(e.target.result) } }))).find(x => x.name === 'چشمہ')
+step('P1', `saved: ${pa} · type=${pl?.type}`); expect('P1', pl?.type === 'water' && pa.includes('💧'), 'place saved with water tag')
+await p.waitForTimeout(2000); const p2 = await pct(); step('P1', `after save: walk ${p2}%`); expect('P1', p2 > p1, 'demo walk resumes after naming')
+await p.getByText('⏸').click().catch(() => {})
 await settings(); await click('+1 days'); await p.reload(); await p.waitForTimeout(2500)
 const t1 = (await p.locator('.modal').count()) ? await p.textContent('.modal') : ''
 step('T1', 'open-trip prompt: ' + t1); expect('T1', t1.includes('ابھی تک کھلا ہے'), 'forgotten-trip prompt shown'); await shot('T1-forgotten-trip')

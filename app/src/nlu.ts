@@ -2,7 +2,7 @@
  * Deterministic Urdu / Roman-Urdu intent parser. No model, no generation.
  * Benchmarked approach from feasibility Test 5 (rules beat 1-2B on-device LLMs, which also invented records).
  */
-import type { Species, HerdEventType } from './db'
+import type { Species, HerdEventType, PlaceType } from './db'
 import { DIRS, DIR_UR, type Dir } from './geo.ts'
 
 // ---------- normalization ----------
@@ -98,9 +98,23 @@ export function parseDue(text: string, toks: string[], nowMs: number): number {
   return days === 0 && due.getTime() < nowMs ? nowMs + 3600000 : due.getTime()
 }
 
+// ---------- place tags ----------
+const PLACE_WORDS: [PlaceType, string[]][] = [
+  ['water', ['پانی', 'ٹیوب', 'کنواں', 'کنویں', 'چشمہ', 'ندی', 'نالہ', 'تالاب', 'کاریز', 'pani', 'tubewell', 'tube well', 'kuan', 'chashma', 'nala', 'talab', 'karez', 'water']],
+  ['grazing', ['چارہ', 'چرا', 'گھاس', 'سبزہ', 'جھاڑی', 'chara', 'charagah', 'ghaas', 'ghas', 'sabza', 'jhari', 'grass', 'grazing']],
+  ['shade', ['سایہ', 'درخت', 'saya', 'saaya', 'darakht', 'shade', 'tree']],
+  ['home', ['گھر', 'ghar']],
+  ['landmark', ['پہاڑ', 'پتھر', 'نشان', 'قبر', 'زیارت', 'pahar', 'pathar', 'nishan', 'ziarat']],
+]
+/** Tag suggested by words in a spoken / typed place name, if any. */
+export function placeTypeOf(name: string): PlaceType | undefined {
+  const t = ' ' + normalize(name).join(' ') + ' '
+  return PLACE_WORDS.find(([, ws]) => ws.some(w => t.includes(w)))?.[0]
+}
+
 // ---------- intents ----------
 export type Intent =
-  | { kind: 'save_place'; name: string; placeType: 'grazing' | 'water' | 'home' | 'other' }
+  | { kind: 'save_place'; name: string; placeType: PlaceType }
   | { kind: 'home_distance' } | { kind: 'way_back' }
   | { kind: 'good_grazing' }
   | { kind: 'last_trip_dir'; dir: Dir }
@@ -156,10 +170,7 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
              raw.match(/(?:is|yahan|yeh|this)\s*(?:jagah|jaga|place)?\s*(?:ko)?\s+(.+?)\s+(?:ke naam se\s+)?(?:yaad rakho|yad rakho|yaad rakhna|save|remember)/i)
   if (sp) {
     const name = sp[1].replace(/^(جگہ|jagah|jaga)\s+(کو|ko)\s+/i, '').replace(/^(کو|ko)\s+/i, '').trim()
-    const tn = normalize(name).join(' ')
-    const placeType = has(tn, 'پانی', 'pani', 'ٹیوب', 'tubewell', 'کنواں', 'kuan') ? 'water'
-      : has(tn, 'گھر', 'ghar') ? 'home' : has(tn, 'چارہ', 'چرا', 'chara', 'charagah') ? 'grazing' : 'other'
-    return { kind: 'save_place', name, placeType }
+    return { kind: 'save_place', name, placeType: placeTypeOf(name) ?? 'other' }
   }
   // 2. reminders (future tense / "yaad dilana")
   if (has(text, ...FUTURE) || has(text, 'check karna', 'dekhna', 'دیکھنا', 'چیک کرنا')) {

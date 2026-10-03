@@ -1,13 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, getHome, setHome, type Species, type HerdEventType, type Rating, type Reminder } from './db'
+import { db, getHome, setHome, PLACE_TAGS, placeIcon, type Species, type HerdEventType, type Rating, type Reminder, type PlaceType } from './db'
 import { now, shiftDays, clockOffsetDays } from './clock'
-import { onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, currentFixState, checkOpenTrip, resumeTrip, canHoldScreen, type Fix, type OpenTrip } from './gps'
-import { spanUr, spanEn } from './trail'
+import { lastFix, onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, currentFixState, checkOpenTrip, resumeTrip, canHoldScreen, type Fix, type OpenTrip } from './gps'
+import { spanUr, spanEn, fixState } from './trail'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
-import { answer, commitPending, agoUr, agoEn, dueUr, dueEn, type Answer } from './answer'
+import { answer, commitPending, savePlace, agoUr, agoEn, dueUr, dueEn, type Answer } from './answer'
 import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN, type HerdStatus } from './herd'
-import { signOf } from './nlu'
+import { signOf, placeTypeOf } from './nlu'
 import { checkReminders, requestNotifications } from './reminders'
 import { speak, canListen, listen, stopListening, hasUrduVoice, LISTEN_ERROR } from './speech'
 import { loadDemo, clearAll } from './demo'
@@ -191,15 +191,52 @@ function ForgottenTrip({ o, onDone }: { o: OpenTrip; onDone: (endedId?: number) 
   )
 }
 
+/**
+ * Name the spot where the herder tapped. The position is frozen at the tap, so walking on while typing or speaking
+ * does not move the saved place. The demo walk pauses while this is open (a real herder may keep walking).
+ */
 function NamePlace({ onClose }: { onClose: (a?: Answer) => void }) {
+  const [spot] = useState(() => ({ fix: lastFix(), at: now() }))
+  const home = useLiveQuery(getHome)
   const [name, setName] = useState('')
-  const save = async (n: string) => { if (!n.trim()) return; onClose(await answer(`اس جگہ کو ${n.trim()} یاد رکھو`)) }
+  const [type, setType] = useState<PlaceType>()   // undefined until tapped: suggested from the words in the name
+  const [listening, setListening] = useState(false)
+  const [micErr, setMicErr] = useState<[string, string]>()
+  useEffect(() => {
+    const wasWalking = isSimulated() && !simState().paused
+    if (wasWalking) simSet({ paused: true })
+    return () => { stopListening(); if (wasWalking) simSet({ paused: false }) }
+  }, [])
+  const tag = type ?? placeTypeOf(name) ?? 'other'
+  const tagInfo = PLACE_TAGS.find(t => t.type === tag)!
+  const fs = fixState(spot.fix, spot.at)
+  const mic = () => {
+    if (listening) { stopListening(); return }
+    setMicErr(undefined)
+    if (listen(t => setName(t), e => { setListening(false); if (e) setMicErr(LISTEN_ERROR[e]) }, t => setName(t))) setListening(true)
+  }
+  const save = async () => {
+    const n = name.trim() || (type ? tagInfo.ur : '')
+    if (n) onClose(await savePlace(n, tag, spot.fix, spot.at))
+  }
+  const where = spot.fix && home ? distanceM(spot.fix, home) : undefined
   return (
     <Modal onClose={() => onClose()}>
       <T ur="اس جگہ کا نام؟" en="Name this place" big />
-      <input autoFocus dir="auto" value={name} onChange={e => setName(e.target.value)} placeholder="پرانا چارہ" onKeyDown={e => e.key === 'Enter' && save(name)} />
-      <div className="chips">{['پرانا چارہ', 'اچھی چراگاہ', 'پانی', 'سایہ'].map(c => <button key={c} onClick={() => save(c)}>{c}</button>)}</div>
-      <button className="big-btn" onClick={() => save(name)}>✓ <T ur="محفوظ کریں" en="Save" /></button>
+      <p className="muted"><T
+        ur={fs.state === 'none' ? '⚠️ ابھی GPS نہیں ملا' : fs.state === 'stale' ? '⚠️ GPS پرانا ہے — جگہ محفوظ نہیں ہو گی' : `📍 جگہ نوٹ کر لی${where !== undefined ? ` · گھر سے ${fmtKmUr(where)}` : ''}${fs.state === 'poor' ? ` · GPS کمزور ±${Math.round(spot.fix!.acc)} میٹر` : ''}`}
+        en={fs.state === 'none' ? 'No GPS fix yet' : fs.state === 'stale' ? 'GPS is stale — the place will not be saved' : `Spot captured${where !== undefined ? ` · ${fmtKm(where)} from home` : ''}${isSimulated() ? ' · demo walk paused' : ''}`} /></p>
+      <div className="askbar">
+        <input autoFocus dir="auto" value={name} onChange={e => setName(e.target.value)} placeholder="پرانا چارہ" onKeyDown={e => e.key === 'Enter' && save()} aria-label="Place name" />
+        {canListen() && <button className={listening ? 'mic on' : 'mic'} aria-label="Speak the name" onClick={mic}>🎤</button>}
+      </div>
+      {listening && <p className="hint listening"><T ur="سن رہا ہوں… جگہ کا نام بولیں" en="Listening… say the name" /></p>}
+      {micErr && <div className="warn-line"><T ur={`🎤 ${micErr[0]}`} en={micErr[1]} /></div>}
+      <T ur="یہ کیسی جگہ ہے؟" en="What kind of place?" />
+      <div className="chips tags">{PLACE_TAGS.map(t => (
+        <button key={t.type} className={tag === t.type ? 'on' : ''} aria-pressed={tag === t.type} onClick={() => setType(t.type)}>
+          <span className="tag-icon">{t.icon}</span><T ur={t.ur} en={t.en} /></button>))}</div>
+      <button className="big-btn" disabled={!name.trim() && !type} onClick={save}>✓ <T ur="محفوظ کریں" en="Save" /></button>
     </Modal>
   )
 }
@@ -437,7 +474,7 @@ function MapScreen() {
       <div className="pad">
         {places.map(p => (
           <button key={p.id} className="card row" onClick={() => setFocus({ placeIds: [p.id!] })}>
-            <span>{p.type === 'water' ? '💧' : p.type === 'home' ? '🏠' : '📍'} <b dir="auto">{p.name}</b></span>
+            <span>{placeIcon(p.type)} <b dir="auto">{p.name}</b></span>
             <span className="muted">{fix ? `${fmtKm(distanceM(fix, p))} ${compass(bearingDeg(fix, p))}` : ''} · {agoEn(p.createdAt)}</span>
           </button>
         ))}

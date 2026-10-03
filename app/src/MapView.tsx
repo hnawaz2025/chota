@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, getHome, type TripPoint } from './db'
+import { db, getHome, placeIcon, type TripPoint } from './db'
 import { onFix, activeTrip, type Fix } from './gps'
 import type { MapFocus } from './answer'
 import { now } from './clock'
@@ -96,7 +96,7 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
     }
     for (const p of places ?? []) {
       const hi = focus?.placeIds?.includes(p.id!)
-      L.marker([p.lat, p.lon], { icon: icon(`<span>${p.type === 'water' ? '💧' : p.type === 'home' ? '🏠' : '📍'}</span><b>${p.name}</b>`, hi ? 'pin place hi' : 'pin place') }).addTo(g)
+      L.marker([p.lat, p.lon], { icon: icon(`<span>${placeIcon(p.type)}</span><b>${p.name}</b>`, hi ? 'pin place hi' : 'pin place') }).addTo(g)
       if (hi) fitPts.push([p.lat, p.lon])
     }
     if (allTrips) (trips ?? []).forEach(({ pts }) => pts.forEach(p => fitPts.push([p.lat, p.lon])))

@@ -43,4 +43,10 @@ for (const [t, kind, check] of cases) {
   if (!ok) console.log('✗', t, '->', JSON.stringify(i))
 }
 console.log(`${pass}/${cases.length} intent cases pass`)
-process.exitCode = pass === cases.length ? 0 : 1
+// place tags suggested from the spoken / typed name
+import { placeTypeOf } from '../src/nlu.ts'
+const tags: [string, string | undefined][] = [['پانی کا تالاب', 'water'], ['Chashma', 'water'], ['اچھی گھاس', 'grazing'], ['purana chara', 'grazing'],
+  ['بڑا درخت', 'shade'], ['سفید پتھر', 'landmark'], ['قادر بخش', undefined]]
+for (const [n, t] of tags) { const ok = placeTypeOf(n) === t; pass += +ok; if (!ok) console.log('✗ tag', n, '->', placeTypeOf(n)) }
+console.log(`${tags.length} place-tag cases checked`)
+process.exitCode = pass === cases.length + tags.length ? 0 : 1

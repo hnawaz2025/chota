@@ -3,7 +3,16 @@ import Dexie, { type EntityTable } from 'dexie'
 export type Species = 'goat' | 'sheep' | 'camel' | 'cattle'
 export type HerdEventType = 'birth' | 'purchase' | 'sale' | 'death' | 'loss' | 'slaughter' | 'other'
 export type Rating = 'good' | 'okay' | 'poor'
-export type PlaceType = 'grazing' | 'water' | 'home' | 'other'
+export type PlaceType = 'grazing' | 'water' | 'shade' | 'landmark' | 'home' | 'other'
+/** Herder-chosen tag for a saved place (their own label, not an assessment by CHOTA). */
+export const PLACE_TAGS: { type: PlaceType; icon: string; ur: string; en: string }[] = [
+  { type: 'water', icon: '💧', ur: 'پانی', en: 'Water' },
+  { type: 'grazing', icon: '🌿', ur: 'چارہ / سبزہ', en: 'Grazing' },
+  { type: 'shade', icon: '🌳', ur: 'سایہ', en: 'Shade' },
+  { type: 'landmark', icon: '🪨', ur: 'نشانی', en: 'Landmark' },
+  { type: 'other', icon: '📍', ur: 'دیگر', en: 'Other' },
+]
+export const placeIcon = (t: PlaceType) => t === 'home' ? '🏠' : PLACE_TAGS.find(x => x.type === t)?.icon ?? '📍'
 
 /** A physical count the herder confirmed. The only authoritative number. */
 export interface HerdConfirmation {

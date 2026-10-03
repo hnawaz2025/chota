@@ -1,11 +1,11 @@
 /** Executes a parsed intent against the local DB and returns a templated Urdu + English answer. */
-import { db, getHome, type Place, type Trip } from './db'
+import { db, getHome, PLACE_TAGS, type Place, type PlaceType, type Trip } from './db'
 import { now, DAY } from './clock'
 import { parse, signOf, type Intent, type HerdEventParse } from './nlu'
 import type { Species } from './db'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
-import { lastFix, activeTrip, currentFixState } from './gps'
-import { splitTrail, spanUr, spanEn } from './trail'
+import { lastFix, activeTrip, currentFixState, type Fix } from './gps'
+import { splitTrail, spanUr, spanEn, fixState } from './trail'
 import { herdStatus, trackedSpecies, confirmCount, countUr, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN } from './herd'
 
 export interface MapFocus { tripIds?: number[]; placeIds?: number[]; homeLine?: boolean; wayBack?: boolean }
@@ -116,6 +116,25 @@ async function trailNote(tripId: number) {
   return { tr, ur, en }
 }
 
+/**
+ * Save a named place at `fix`. `atT` is when the herder asked (tapped "remember this place"): the fix must have
+ * been fresh *then*; typing or speaking the name afterwards does not move the place.
+ */
+export async function savePlace(name: string, type: PlaceType, fix: Fix | undefined, atT = now()): Promise<Answer> {
+  const A = (ur: string, en: string, map?: MapFocus, ok = true): Answer => ({ ur, en, map, ok, intent: 'save_place' })
+  name = name.trim()
+  if (!fix) return A('ابھی GPS نہیں ملا، جگہ محفوظ نہیں ہو سکی۔', 'No GPS fix yet; the place was not saved.', undefined, false)
+  const fs = fixState(fix, atT)
+  if (fs.state === 'stale') return A(`${staleUr(fs.ageMs)}، اس لیے جگہ محفوظ نہیں کی — غلط جگہ یاد ہو جاتی۔ کھلی جگہ میں GPS کا انتظار کریں۔`,
+    `${staleEn(fs.ageMs)}, so the place was not saved — it would be stored at the wrong spot. Wait for GPS in the open.`, undefined, false)
+  const dup = await db.places.filter(p => p.name.trim() === name).count()
+  const weak = fs.state === 'poor' ? { ur: ` (GPS کمزور تھا، ±${Math.round(fix.acc)} میٹر)`, en: ` (weak GPS, ±${Math.round(fix.acc)} m)` } : { ur: '', en: '' }
+  const tag = PLACE_TAGS.find(t => t.type === type)
+  const id = await db.places.add({ name, type, lat: fix.lat, lon: fix.lon, acc: fix.acc, createdAt: atT, tripId: activeTrip() })
+  return A(`ٹھیک ہے، یہ جگہ "${name}" کے نام سے یاد رکھ لی${tag && type !== 'other' ? ` (${tag.icon} ${tag.ur})` : ''}۔${dup ? ' (اس نام کی ایک اور جگہ بھی ہے)' : ''}${weak.ur}`,
+    `Saved this spot as "${name}"${tag && type !== 'other' ? ` (${tag.en.toLowerCase()})` : ''}.${dup ? ' (Another place has the same name.)' : ''}${weak.en}`, { placeIds: [id as number] })
+}
+
 export async function answer(text: string): Promise<Answer> {
   const places = await db.places.toArray()
   const intent = parse(text, now(), places.map(p => p.name))
@@ -123,16 +142,7 @@ export async function answer(text: string): Promise<Answer> {
   const f = lastFix()
 
   switch (intent.kind) {
-    case 'save_place': {
-      if (!f) return A('ابھی GPS نہیں ملا، جگہ محفوظ نہیں ہو سکی۔', 'No GPS fix yet; the place was not saved.', undefined, false)
-      const fs = currentFixState()
-      if (fs.state === 'stale') return A(`${staleUr(fs.ageMs)}، اس لیے جگہ محفوظ نہیں کی — غلط جگہ یاد ہو جاتی۔ کھلی جگہ میں GPS کا انتظار کریں۔`,
-        `${staleEn(fs.ageMs)}, so the place was not saved — it would be stored at the wrong spot. Wait for GPS in the open.`, undefined, false)
-      const dup = places.find(p => p.name.trim() === intent.name), n = accNote()
-      const id = await db.places.add({ name: intent.name, type: intent.placeType, lat: f.lat, lon: f.lon, acc: f.acc, createdAt: now(), tripId: activeTrip() })
-      return A(`ٹھیک ہے، یہ جگہ "${intent.name}" کے نام سے یاد رکھ لی۔${dup ? ' (اس نام کی ایک اور جگہ بھی ہے)' : ''}${n.ur}`,
-        `Saved this spot as "${intent.name}".${dup ? ' (Another place has the same name.)' : ''}${n.en}`, { placeIds: [id as number] })
-    }
+    case 'save_place': return savePlace(intent.name, intent.placeType, f)
     case 'home_distance': { const h = await homeLine(); return A(h.ur, h.en, { homeLine: true }) }
     case 'way_back': {
       const tid = activeTrip() ?? (await lastEnded())[0]?.id

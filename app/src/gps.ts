@@ -39,7 +39,7 @@ const SIM_ROUTE_KM: [number, number][] = [
 ]
 const WALK_MPS = 1.3   // ~4.7 km/h with animals
 let simIdx = 0, simFrac = 0, simSpeedMps = 40, simPaused = true
-export const simState = () => ({ paused: simPaused, speed: simSpeedMps, progress: simIdx / (SIM_ROUTE_KM.length - 1) })
+export const simState = () => ({ paused: simPaused, speed: simSpeedMps, progress: (simIdx + simFrac) / (SIM_ROUTE_KM.length - 1) })
 export function simSet(o: { paused?: boolean; speed?: number; reset?: boolean }) {
   if (o.paused !== undefined) simPaused = o.paused
   if (o.speed) simSpeedMps = o.speed
