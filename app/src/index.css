@@ -84,6 +84,18 @@ main { flex: 1; }
 .chips button.on { background: var(--accent); color: #fff; }
 .chips .danger { color: var(--poor); border-color: var(--poor); }
 .examples button { flex: 1 1 45%; }
+.voice { display: flex; flex-direction: column; gap: 8px; }
+.bigmic { align-self: center; width: 156px; height: 156px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 6px 0 rgba(0,0,0,.18), 0 0 0 10px rgba(200,97,29,.15); }
+.bigmic > span { font-size: 3.4rem; line-height: 1; }
+.bigmic .en { color: rgba(255,255,255,.85); }
+.bigmic.on { background: var(--poor); animation: pulse 1s infinite; box-shadow: 0 0 0 14px rgba(196,68,47,.25); }
+.examples-box summary { text-align: center; cursor: pointer; padding: 4px; }
+.examples-box .chips { margin-top: 6px; }
+.trip-voice { padding: 8px 16px 0; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.grid3 .tile { aspect-ratio: auto; min-height: 96px; border-radius: 18px; padding: 8px 4px; }
+.grid3 .tile .emoji { font-size: 1.9rem; }
 .chips.tags button { display: flex; flex-direction: column; align-items: center; min-width: 64px; padding: 4px 8px; }
 .chips.tags .tag-icon { font-size: 1.5rem; line-height: 1.2; }
 .chips.tags button.on .en { color: rgba(255,255,255,.85); }

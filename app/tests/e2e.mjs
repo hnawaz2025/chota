@@ -12,8 +12,9 @@ p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() ==
 const shot = async n => p.screenshot({ path: `${OUT}/${n}.png` })
 const step = (n, s) => console.log(`[${n}] ${s.replace(/\s+/g, ' ').slice(0, 300)}`)
 const expect = (n, ok, what) => { if (!ok) { fails.push(`${n}: ${what}`); console.log(`  ✗ ${what}`) } }
-const click = async t => p.getByText(t, { exact: false }).first().click()
-const ask = async q => { await click('چھوٹا سے پوچھیں'); await p.fill('.askbar input', q); await p.press('.askbar input', 'Enter'); await p.waitForSelector('.answer'); await p.waitForTimeout(800); return (await p.textContent('.answer')).trim() }
+const click = async t => p.getByText(t, { exact: false }).filter({ visible: true }).first().click()
+/** Ask on the home-screen voice hub (typed; the mic path feeds the same box). */
+const ask = async q => { await home(); await p.fill('.voice.big .askbar input', q); await p.press('.voice.big .askbar input', 'Enter'); await p.waitForSelector('.voice.big .answer'); await p.waitForTimeout(800); return (await p.textContent('.voice.big .answer')).trim() }
 const home = async () => { if (await p.locator('header button.back').count()) await p.locator('header button.back').click().catch(() => {}); await p.waitForTimeout(300) }
 /** Queued reminders pop up once trip prompts are resolved; snooze them so they don't block navigation. */
 const dismissReminders = async () => { for (let i = 0; i < 5 && await p.locator('.modal').count(); i++) { await p.getByText('بعد میں').first().click().catch(() => {}); await p.waitForTimeout(300) } }
@@ -103,6 +104,17 @@ await ctx.setOffline(true); await p.reload(); await p.waitForTimeout(2500); awai
 const off = await p.evaluate(() => [...document.querySelectorAll('img.leaflet-image-layer')].some(i => i.complete && i.naturalWidth > 0))
 step('offline', 'map img loaded: ' + off); expect('offline', off, 'offline basemap')
 await ctx.setOffline(false)
+
+// V1. Voice-first: start a trip by voice on home; end it by voice on the trip screen (confirmed), then rating.
+await dismissReminders(); await home(); await p.fill('.voice.big .askbar input', 'chalo trip shuru karein'); await p.press('.voice.big .askbar input', 'Enter'); await p.waitForTimeout(1200)
+const v1 = (await p.locator('.trip-screen').count()) ? 'on trip screen' : 'still home'
+step('V1', 'start: ' + v1); expect('V1', await p.locator('.trip-screen').count() === 1, 'voice "start trip" opens a running trip')
+await p.fill('.trip-voice .askbar input', 'trip khatam'); await p.press('.trip-voice .askbar input', 'Enter'); await p.waitForTimeout(800)
+const v1b = await p.textContent('.trip-voice .answer'); step('V1', 'end read-back: ' + v1b); expect('V1', v1b.includes('ختم کر دوں'), 'end trip asks first')
+expect('V1', await p.locator('.trip-screen').count() === 1, 'trip not ended before confirmation')
+await click('ہاں، ختم کریں'); await p.waitForTimeout(800)
+const v1c = (await p.locator('.modal').count()) ? await p.textContent('.modal') : ''; step('V1', 'after yes: ' + v1c)
+expect('V1', v1c.includes('چارہ کیسا تھا'), 'rating asked after voice end'); if (v1c) await click('چھوڑیں')
 
 // ---------------- Honest Trail ----------------
 // T1. Forgotten trip: start, walk a bit, "come back" a day later. App must ask, and end it at the last recorded point.

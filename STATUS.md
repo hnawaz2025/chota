@@ -81,6 +81,24 @@ _Last updated: 2026-10-03 · milestones 1–5 done · PWA is demo-ready (desktop
 - Trip screen: a one-line note says the trail is not recorded with the screen off. It shows a stronger warning if
   the phone can't keep the screen on.
 
+## Voice-first UI (after milestone 5, on user request)
+- **One pipeline for everything:** voice (or typing) → text → `nlu.parse()` → intent → `answer()` runs the feature.
+  The feature either answers, changes data, or opens a screen.
+- **Home is the voice hub:** a big mic with live transcript, then the answer, map and ✓/✗ inline. Start Trip, Herd,
+  Reminders, Map, History and Settings are buttons underneath. The separate Ask screen is gone.
+- **New voice intents:**
+  - `start_trip` ("سفر شروع کرو", "chalo trip shuru karein", "let's start the trip") starts the trip and opens the trip screen
+  - `end_trip` ("سفر ختم کرو", "trip khatam", "ghar pohanch gaya") asks for ✓, then opens the rating
+
+  A time or "یاد" word makes it a reminder instead.
+- **Trip screen** has a compact voice bar: name a place, way back, end trip, any question.
+- **Naming a place:**
+  - the spot is frozen at the tap, and the demo walk pauses while naming
+  - it has a mic and tags (💧 water, 🌿 grazing, 🌳 shade, 🪨 landmark, 📍 other), auto-suggested from the spoken name
+- The mic writes words live while you speak and states why when it fails.
+- Tests: 42 intent cases + 7 tag cases + 8 trail tests. e2e adds P1 (naming pauses walk, tag saved) and
+  V1 (voice start → voice end with confirm → rating). All pass, 0 console errors.
+
 ## Test results (final run, 2026-10-03)
 | Suite | Result |
 |---|---|

@@ -5,7 +5,7 @@ import { now, shiftDays, clockOffsetDays } from './clock'
 import { lastFix, onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, currentFixState, checkOpenTrip, resumeTrip, canHoldScreen, type Fix, type OpenTrip } from './gps'
 import { spanUr, spanEn, fixState } from './trail'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
-import { answer, commitPending, savePlace, agoUr, agoEn, dueUr, dueEn, type Answer } from './answer'
+import { answer, commitPending, savePlace, agoUr, agoEn, dueUr, dueEn, type Answer, type MapFocus, type UiAction } from './answer'
 import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN, type HerdStatus } from './herd'
 import { signOf, placeTypeOf } from './nlu'
 import { checkReminders, requestNotifications } from './reminders'
@@ -13,7 +13,7 @@ import { speak, canListen, listen, stopListening, hasUrduVoice, LISTEN_ERROR } f
 import { loadDemo, clearAll } from './demo'
 import { MapView } from './MapView'
 
-type Screen = 'home' | 'trip' | 'ask' | 'reminders' | 'herd' | 'map' | 'history' | 'settings'
+type Screen = 'home' | 'trip' | 'reminders' | 'herd' | 'map' | 'history' | 'settings'
 const lsGet = (k: string) => { try { return localStorage.getItem(k) } catch { return null } }
 const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v) } catch { /* ignore */ } }
 
@@ -43,9 +43,8 @@ export default function App() {
     <div className="app">
       <Header onHome={() => go('home')} screen={screen} />
       <main>
-        {screen === 'home' && <Home go={go} />}
+        {screen === 'home' && <Home go={go} onRate={setRateTrip} />}
         {screen === 'trip' && <TripScreen go={go} onEnded={id => { setRateTrip(id); go('home') }} />}
-        {screen === 'ask' && <Ask />}
         {screen === 'reminders' && <Reminders />}
         {screen === 'herd' && <Herd />}
         {screen === 'map' && <MapScreen />}
@@ -76,7 +75,7 @@ function Header({ onHome, screen }: { onHome: () => void; screen: Screen }) {
 }
 
 // ---------------- Home ----------------
-function Home({ go }: { go: (s: Screen) => void }) {
+function Home({ go, onRate }: { go: (s: Screen) => void; onRate: (tripId: number) => void }) {
   useTick(5000)
   const fix = useFix()
   const home = useLiveQuery(getHome)
@@ -100,13 +99,13 @@ function Home({ go }: { go: (s: Screen) => void }) {
             : <T ur={`⚠️ ${SPECIES_UR_OBL[s.species]} کی گنتی ${s.daysSinceConfirmed} دن سے تصدیق نہیں ہوئی`} en={`${SPECIES_EN[s.species]} not recounted for ${s.daysSinceConfirmed} days`} />}
         </button>
       ))}
-      <div className="grid4">
+      <VoiceAsk big onAction={a => 'go' in a ? go(a.go) : onRate(a.rate)} />
+      <div className="grid3">
         <button className={`tile trip ${tid ? 'active' : ''}`} onClick={async () => { if (!tid) await startTrip(); go('trip') }}>
-          <span className="emoji">🐐</span>{tid ? <T ur="سفر جاری ہے" en="Trip in progress" big /> : <T ur="سفر شروع کریں" en="Start Trip" big />}
+          <span className="emoji">🐐</span>{tid ? <T ur="سفر جاری ہے" en="Trip in progress" /> : <T ur="سفر شروع کریں" en="Start Trip" />}
         </button>
-        <button className="tile ask" onClick={() => go('ask')}><span className="emoji">🎙️</span><T ur="چھوٹا سے پوچھیں" en="Ask Chota" big /></button>
-        <button className="tile rem" onClick={() => go('reminders')}><span className="emoji">🔔</span><T ur="یاد دہانیاں" en="Reminders" big />{pending > 0 && <i className="count">{pending}</i>}</button>
-        <button className="tile herd" onClick={() => go('herd')}><span className="emoji">🐑</span><T ur="ریوڑ کی گنتی" en="Herd Count" big />{stale.length > 0 && <i className="count">!</i>}</button>
+        <button className="tile herd" onClick={() => go('herd')}><span className="emoji">🐑</span><T ur="ریوڑ کی گنتی" en="Herd Count" />{stale.length > 0 && <i className="count">!</i>}</button>
+        <button className="tile rem" onClick={() => go('reminders')}><span className="emoji">🔔</span><T ur="یاد دہانیاں" en="Reminders" />{pending > 0 && <i className="count">{pending}</i>}</button>
       </div>
       <div className="row3">
         <button onClick={() => go('map')}>🗺️<T ur="نقشہ و جگہیں" en="Map & Places" /></button>
@@ -145,6 +144,7 @@ function TripScreen({ go, onEnded }: { go: (s: Screen) => void; onEnded: (id: nu
         <div><b>{hd !== undefined ? fmtKm(hd) : '—'}</b><T ur={`گھر ${hd !== undefined ? DIR_UR[compass(bearingDeg(fix!, home!))] : ''}`} en="to home" /></div>
       </div>
       {msg && <div className="answer small"><T ur={msg.ur} en={msg.en} /></div>}
+      <div className="trip-voice"><VoiceAsk onAction={a => { if ('rate' in a) onEnded(a.rate) }} onMap={m => { if (m) setFocus(m) }} /></div>
       <div className="trip-actions">
         <button className="big-btn place" onClick={() => setNaming(true)}>📍 <T ur="یہ جگہ یاد رکھو" en="Remember this place" /></button>
         <button className="big-btn back" onClick={async () => { const a = await answer('wapas ka rasta dikhao'); setMsg(a); setFocus({ ...a.map, wayBack: true }); speak(a.ur) }}>
@@ -262,70 +262,80 @@ function RateTrip({ id, onDone }: { id: number; onDone: () => void }) {
   )
 }
 
-// ---------------- Ask ----------------
+// ---------------- Voice (home hub + trip screen) ----------------
 const EXAMPLES: [string, string][] = [
+  ['سفر شروع کرو', "Let's start the trip"],
   ['پچھلی بار اچھا چارہ کہاں ملا تھا؟', 'Where was good grazing last time?'],
   ['گھر کتنی دور ہے؟', 'How far is home?'],
-  ['میرا واپسی کا راستہ دکھاؤ', 'Show my way back'],
   ['کل صبح ریوڑ کی گنتی کرنا یاد دلانا', 'Remind me to count the herd tomorrow morning'],
+  ['میرے پاس 47 بکریاں ہیں', 'I have 47 goats'],
+  ['دو بکریاں بیچیں', 'Sold two goats'],
   ['کتنی بکریاں ہیں؟', 'How many goats?'],
   ['میں یہاں پہلے آیا ہوں؟', 'Have I been here before?'],
-  ['پچھلی دفعہ شمال مغرب کب گیا تھا؟', 'When did I last go north-west?'],
-  ['اس مہینے کتنے سفر کیے؟', 'How many trips this month?'],
-  ['دو بکریاں بیچیں', 'Sold two goats'],
 ]
-function Ask() {
+const CONFIRM_LABEL: Record<string, [string, string, string, string]> = {
+  end_trip: ['ہاں، ختم کریں', 'Yes, end it', 'نہیں، جاری رکھیں', 'No, keep going'],
+  default: ['ہاں، درج کریں', 'Yes, save', 'نہیں، غلط ہے', 'No, wrong'],
+}
+
+/**
+ * Speak (or type) anything: questions, "start the trip", reminders, herd counts. Words appear live while speaking;
+ * anything that changes records the herder can't easily undo is read back and needs ✓ first.
+ * big: the home-screen hub with a large mic. Otherwise a compact bar (trip screen).
+ */
+function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAction) => void; onMap?: (m: MapFocus | undefined) => void }) {
   const [q, setQ] = useState('')
-  const [log, setLog] = useState<{ q: string; a: Answer }[]>([])
+  const [cur, setCur] = useState<{ q: string; a: Answer }>()
   const [listening, setListening] = useState(false)
   const [micErr, setMicErr] = useState<[string, string]>()
-  /** Final text from the mic: shown in the box for a moment so the herder sees what was heard, then sent. */
+  /** Final text from the mic: shown for a moment so the herder sees what was heard, then sent. */
   const [heard, setHeard] = useState<string>()
   useEffect(() => { if (!heard) return; const t = setTimeout(() => { ask(heard); setHeard(undefined) }, 900); return () => clearTimeout(t) }, [heard])
+  useEffect(() => () => stopListening(), [])
+  const show = (q: string, a: Answer) => { setCur({ q, a }); speak(a.ur); onMap?.(a.map); if (a.action) onAction(a.action) }
   const mic = () => {
     if (listening) { stopListening(); return }
-    setMicErr(undefined)
-    setQ('')
-    if (listen(t => { setQ(t); setHeard(t) },
-      e => { setListening(false); if (e) setMicErr(LISTEN_ERROR[e]) },
-      t => setQ(t))) setListening(true)
+    setMicErr(undefined); setQ('')
+    if (listen(t => { setQ(t); setHeard(t) }, e => { setListening(false); if (e) setMicErr(LISTEN_ERROR[e]) }, t => setQ(t))) setListening(true)
   }
-  const ask = async (text: string) => {
-    if (!text.trim()) return
-    const a = await answer(text); setLog(l => [{ q: text, a }, ...l].slice(0, 6)); setQ(''); speak(a.ur)
-  }
-  const cur = log[0]
+  const ask = async (text: string) => { if (!text.trim()) return; const a = await answer(text); setQ(''); show(text, a) }
   const resolve = async (yes: boolean) => {
     if (!cur?.a.pending) return
     const a: Answer = yes ? await commitPending(cur.a.pending)
+      : cur.a.pending.kind === 'end_trip' ? { ur: 'ٹھیک ہے، سفر جاری ہے۔', en: 'OK, the trip continues.', ok: false, intent: cur.a.intent }
       : { ur: 'ٹھیک ہے، کچھ درج نہیں کیا۔ دوبارہ بولیں یا ریوڑ کے صفحے پر خود درج کریں۔', en: 'OK, nothing was saved. Say it again, or enter it on the Herd screen.', ok: false, intent: cur.a.intent }
-    setLog(l => [{ q: cur.q, a }, ...l.slice(1)]); speak(a.ur)
+    show(cur.q, a)
   }
+  const lbl = CONFIRM_LABEL[cur?.a.pending?.kind ?? ''] ?? CONFIRM_LABEL.default
   return (
-    <div className="ask">
+    <div className={big ? 'voice big' : 'voice'}>
+      {big && canListen() && (
+        <button className={listening ? 'bigmic on' : 'bigmic'} aria-label="Speak to CHOTA" onClick={mic}>
+          <span>🎤</span><T ur={listening ? 'سن رہا ہوں…' : 'بولیں'} en={listening ? 'Listening… tap to stop' : 'Tap and speak'} />
+        </button>)}
       <div className="askbar">
         <input dir="auto" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && ask(q)}
-          placeholder="یہاں بولیں یا لکھیں…" aria-label="Ask Chota" />
-        {canListen() && <button className={listening ? 'mic on' : 'mic'} aria-label="Speak" onClick={mic}>🎤</button>}
-        <button className="go" onClick={() => ask(q)}>➤</button>
+          placeholder={big ? 'یا یہاں لکھیں…' : 'بولیں یا لکھیں…'} aria-label="Ask Chota" />
+        {!big && canListen() && <button className={listening ? 'mic on' : 'mic'} aria-label="Speak" onClick={mic}>🎤</button>}
+        <button className="go" onClick={() => ask(q)} aria-label="Send">➤</button>
       </div>
-      {listening && <p className="hint listening"><T ur={q ? 'سن رہا ہوں… جو سنا وہ اوپر لکھا جا رہا ہے' : 'سن رہا ہوں… بولیں (روکنے کے لیے 🎤 دوبارہ دبائیں)'} en={q ? 'Listening… what I hear is written above' : 'Listening… speak now (tap 🎤 again to stop)'} /></p>}
+      {listening && q && <p className="hint listening"><T ur="جو سنا وہ اوپر لکھا جا رہا ہے" en="What I hear is written above" /></p>}
       {heard && <p className="hint"><T ur="یہ سنا — جواب آ رہا ہے…" en="Got it — answering…" /></p>}
       {micErr && <div className="warn-line"><T ur={`🎤 ${micErr[0]}`} en={micErr[1]} /></div>}
-      <p className="hint"><T ur="کی بورڈ کا 🎤 مائیک بھی استعمال کر سکتے ہیں" en="Tip: the keyboard's mic (Gboard Urdu voice typing) works too" /></p>
       {cur && (
-        <div className={`answer ${cur.a.ok ? '' : 'muted'}`}>
+        <div className={`answer ${big ? '' : 'small'} ${cur.a.ok ? '' : 'muted'}`}>
           <div className="q" dir="auto">“{cur.q}”</div>
-          <T ur={cur.a.ur} en={cur.a.en} big />
+          <T ur={cur.a.ur} en={cur.a.en} big={big} />
           {hasUrduVoice() && <button className="speak" onClick={() => speak(cur.a.ur)}>🔊</button>}
           {cur.a.pending && <div className="rate confirm">
-            <button className="good" onClick={() => resolve(true)}>✓<T ur="ہاں، درج کریں" en="Yes, save" /></button>
-            <button className="poor" onClick={() => resolve(false)}>✗<T ur="نہیں، غلط ہے" en="No, wrong" /></button>
+            <button className="good" onClick={() => resolve(true)}>✓<T ur={lbl[0]} en={lbl[1]} /></button>
+            <button className="poor" onClick={() => resolve(false)}>✗<T ur={lbl[2]} en={lbl[3]} /></button>
           </div>}
         </div>
       )}
-      {cur?.a.map && <MapView focus={cur.a.map} className="map short" />}
-      <div className="chips examples">{EXAMPLES.map(([u, e]) => <button key={u} onClick={() => ask(u)}><T ur={u} en={e} /></button>)}</div>
+      {big && cur?.a.map && <MapView focus={cur.a.map} className="map short" />}
+      {big && <details className="examples-box"><summary><T ur="کیا پوچھ سکتے ہیں؟ (مثالیں)" en="What can I say? (examples)" /></summary>
+        <div className="chips examples">{EXAMPLES.map(([u, e]) => <button key={u} onClick={() => ask(u)}><T ur={u} en={e} /></button>)}</div></details>}
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { now, DAY } from './clock'
 import { parse, signOf, type Intent, type HerdEventParse } from './nlu'
 import type { Species } from './db'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
-import { lastFix, activeTrip, currentFixState, type Fix } from './gps'
+import { lastFix, activeTrip, currentFixState, startTrip, endTrip, type Fix } from './gps'
 import { splitTrail, spanUr, spanEn, fixState } from './trail'
 import { herdStatus, trackedSpecies, confirmCount, countUr, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN } from './herd'
 
@@ -13,13 +13,16 @@ export interface MapFocus { tripIds?: number[]; placeIds?: number[]; homeLine?: 
 export type PendingWrite =
   | { kind: 'herd_event'; events: HerdEventParse[]; sourceText: string }
   | { kind: 'herd_confirm'; counts: { species: Species; count: number }[]; sourceText: string }
-export interface Answer { ur: string; en: string; map?: MapFocus; ok: boolean; intent: Intent['kind']; pending?: PendingWrite }
+  | { kind: 'end_trip'; sourceText: string }
+/** Something the screen should do after the answer: open the trip screen, or ask for the grazing rating. */
+export type UiAction = { go: 'trip' } | { rate: number }
+export interface Answer { ur: string; en: string; map?: MapFocus; ok: boolean; intent: Intent['kind']; pending?: PendingWrite; action?: UiAction }
 
 const TYPE_UR = { birth: 'پیدائش', purchase: 'خرید', sale: 'فروخت', death: 'موت', loss: 'گم/چوری', slaughter: 'ذبح', other: '' }
 const TYPE_EN = { birth: 'born', purchase: 'bought', sale: 'sold', death: 'died', loss: 'lost/stolen', slaughter: 'slaughtered', other: '' }
 
 /** Read-back of what was understood, stated before anything is saved. Assumed quantities are called out. */
-function readBack(p: PendingWrite) {
+function readBack(p: Extract<PendingWrite, { kind: 'herd_event' | 'herd_confirm' }>) {
   const ur = p.kind === 'herd_event'
     ? p.events.map(e => `${countUr(e.qty, e.species)} — ${TYPE_UR[e.type]}${e.qtyAssumed ? ' (تعداد نہیں بتائی، ایک مانی)' : ''}`).join('؛ ')
     : p.counts.map(c => `${countUr(c.count, c.species)} — آج کی پوری گنتی`).join('؛ ')
@@ -31,6 +34,11 @@ function readBack(p: PendingWrite) {
 
 /** The herder confirmed the read-back: write it. */
 export async function commitPending(p: PendingWrite): Promise<Answer> {
+  if (p.kind === 'end_trip') {
+    const id = await endTrip()
+    return id ? { ur: 'سفر ختم اور محفوظ ہو گیا۔', en: 'Trip ended and saved.', ok: true, intent: 'end_trip', action: { rate: id } }
+      : { ur: 'کوئی سفر جاری نہیں تھا۔', en: 'No trip was running.', ok: false, intent: 'end_trip' }
+  }
   const ur: string[] = [], en: string[] = []
   if (p.kind === 'herd_confirm') for (const c of p.counts) {
     const before = await herdStatus(c.species)
@@ -143,6 +151,16 @@ export async function answer(text: string): Promise<Answer> {
 
   switch (intent.kind) {
     case 'save_place': return savePlace(intent.name, intent.placeType, f)
+    case 'start_trip': {
+      if (activeTrip()) return { ...A('سفر پہلے سے جاری ہے۔', 'A trip is already running.'), action: { go: 'trip' } }
+      await startTrip()
+      return { ...A('سفر شروع ہو گیا۔ راستہ ریکارڈ ہو رہا ہے — CHOTA کھلا رکھیں۔', 'Trip started. The trail is being recorded — keep CHOTA open.'), action: { go: 'trip' } }
+    }
+    case 'end_trip': {
+      if (!activeTrip()) return A('کوئی سفر جاری نہیں۔', 'No trip is running.', undefined, false)
+      // Misheard words must not end a trip: confirm first, like herd changes.
+      return { ...A('میں نے سمجھا: سفر ختم کرنا ہے۔ کیا ختم کر دوں؟', 'I understood: end the trip. Shall I end it?'), pending: { kind: 'end_trip', sourceText: text } }
+    }
     case 'home_distance': { const h = await homeLine(); return A(h.ur, h.en, { homeLine: true }) }
     case 'way_back': {
       const tid = activeTrip() ?? (await lastEnded())[0]?.id
@@ -218,7 +236,7 @@ export async function answer(text: string): Promise<Answer> {
     }
     case 'herd_confirm':
     case 'herd_event': {
-      const pending: PendingWrite = intent.kind === 'herd_event'
+      const pending: Extract<PendingWrite, { kind: 'herd_event' | 'herd_confirm' }> = intent.kind === 'herd_event'
         ? { kind: 'herd_event', events: intent.events, sourceText: text }
         : { kind: 'herd_confirm', counts: intent.counts, sourceText: text }
       const rb = readBack(pending)

@@ -115,6 +115,7 @@ export function placeTypeOf(name: string): PlaceType | undefined {
 // ---------- intents ----------
 export type Intent =
   | { kind: 'save_place'; name: string; placeType: PlaceType }
+  | { kind: 'start_trip' } | { kind: 'end_trip' }
   | { kind: 'home_distance' } | { kind: 'way_back' }
   | { kind: 'good_grazing' }
   | { kind: 'last_trip_dir'; dir: Dir }
@@ -130,6 +131,12 @@ export type Intent =
 
 /** qtyAssumed: no number was said, so 1 was assumed. The read-back must say so. */
 export interface HerdEventParse { species: Species; type: HerdEventType; qty: number; qtyAssumed: boolean }
+
+const TRIP_WORDS = ['سفر', 'ٹرپ', 'چکر', 'trip', 'safar', 'chakkar', 'grazing']
+const START_WORDS = ['شروع', 'چلو', 'چلیں', 'نکل', 'shuru', 'chalo', 'chalein', 'chalen', 'nikal', 'start', "let's go", 'lets go']
+const END_WORDS = ['ختم', 'بند', 'روک', 'khatam', 'band', 'rok', 'end', 'stop', 'finish']
+/** A time or "remind" word means this is about later (a reminder), not "do it now". */
+const LATER_WORDS = ['یاد', 'yaad', 'yad', 'remind', 'کل', 'kal', 'پرسوں', 'parson', 'بعد', 'baad', 'صبح', 'subah', 'شام', 'shaam', 'tomorrow']
 
 const FUTURE = ['یاد دلا', 'یاد کرا', 'نا ہے', 'نی ہے', 'نے ہیں', 'yaad dila', 'yad dila', 'na hai', 'ni hai', 'ne hain', 'remind']
 
@@ -172,7 +179,13 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
     const name = sp[1].replace(/^(جگہ|jagah|jaga)\s+(کو|ko)\s+/i, '').replace(/^(کو|ko)\s+/i, '').trim()
     return { kind: 'save_place', name, placeType: placeTypeOf(name) ?? 'other' }
   }
-  // 2. reminders (future tense / "yaad dilana")
+  // 2. trip control, now (not "later": that is a reminder)
+  const later = LATER_WORDS.some(w => toks.includes(w) || (w.includes(' ') && text.includes(w)))
+  if (!later) {
+    if (has(text, ...TRIP_WORDS) && has(text, ...START_WORDS) || has(text, 'چرانے جا', 'charane ja', 'chara ne ja')) return { kind: 'start_trip' }
+    if (has(text, ...TRIP_WORDS) && has(text, ...END_WORDS) || has(text, 'واپس آ گیا', 'گھر پہنچ گیا', 'wapas aa gaya', 'ghar pohanch gaya', 'ghar pahunch gaya')) return { kind: 'end_trip' }
+  }
+  // 3. reminders (future tense / "yaad dilana")
   if (has(text, ...FUTURE) || has(text, 'check karna', 'dekhna', 'دیکھنا', 'چیک کرنا')) {
     if (!has(text, 'دکھاؤ', 'dikhao')) return { kind: 'reminder', text: raw.trim(), dueAt: parseDue(text, toks, nowMs) }
   }

@@ -34,6 +34,16 @@ const cases: [string, string, (i: any) => boolean][] = [
   ['dawai li aur bakri ko di', 'unknown', () => true],   // Test 5: an LLM turned this into a death
   ['kitni bakriyan hain?', 'herd_status', () => true],
   ['السلام علیکم', 'unknown', () => true],
+  ['سفر شروع کرو', 'start_trip', () => true],
+  ['chalo trip shuru karein', 'start_trip', () => true],
+  ["let's start the trip", 'start_trip', () => true],
+  ['سفر شروع کرنا ہے', 'start_trip', () => true],
+  ['بکریاں چرانے جا رہا ہوں', 'start_trip', () => true],
+  ['کل صبح سفر شروع کرنا یاد دلانا', 'reminder', () => true],
+  ['سفر ختم کرو', 'end_trip', () => true],
+  ['trip khatam', 'end_trip', () => true],
+  ['ghar pohanch gaya', 'end_trip', () => true],
+  ['کل صبح ٹیوب ویل جانا ہے', 'reminder', () => true],
 ]
 let pass = 0
 for (const [t, kind, check] of cases) {
