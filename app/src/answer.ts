@@ -49,6 +49,8 @@ export async function commitPending(p: PendingWrite): Promise<Answer> {
 }
 
 const RATING_UR = { good: 'اچھا', okay: 'ٹھیک', poor: 'کمزور' } as const
+/** Every historical answer is about what CHOTA recorded, never a claim of complete history. */
+const REC_UR = 'میرے ریکارڈ میں', REC_EN = 'In my records'
 export const agoUr = (t: number) => { const d = Math.floor((now() - t) / DAY); return d <= 0 ? 'آج' : d === 1 ? 'کل' : `${d} دن پہلے` }
 export const agoEn = (t: number) => { const d = Math.floor((now() - t) / DAY); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago` }
 const durUr = (ms: number) => { const h = Math.floor(ms / 3600000), m = Math.round(ms % 3600000 / 60000); return h ? `${h} گھنٹے ${m} منٹ` : `${m} منٹ` }
@@ -142,37 +144,40 @@ export async function answer(text: string): Promise<Answer> {
         { tripIds: [tid], wayBack: true, homeLine: true })
     }
     case 'good_grazing': {
-      const good = (await lastEnded()).filter(t => t.rating === 'good')
+      const ended = await lastEnded(), good = ended.filter(t => t.rating === 'good'), unrated = ended.filter(t => !t.rating).length
       const gp = places.filter(p => p.type === 'grazing')
-      if (!good.length && !gp.length) return A('ابھی تک آپ نے کسی سفر میں چارے کو "اچھا" نہیں بتایا۔', 'You have not rated any trip\'s grazing as good yet.', undefined, false)
-      if (!good.length) return A(`محفوظ چراگاہیں: ${gp.map(p => p.name).join('، ')}۔`, `Saved grazing places: ${gp.map(p => p.name).join(', ')}.`, { placeIds: gp.map(p => p.id!) })
+      const unr = unrated ? { ur: ` ${unrated} سفر بغیر رائے کے ہیں۔`, en: ` ${unrated} recorded trip(s) have no rating.` } : { ur: '', en: '' }
+      if (!good.length && !gp.length) return A(`${REC_UR} ابھی تک کسی سفر کا چارہ "اچھا" درج نہیں۔${unr.ur}`, `${REC_EN}, no trip's grazing has been rated good yet.${unr.en}`, undefined, false)
+      if (!good.length) return A(`${REC_UR} کسی سفر کا چارہ "اچھا" درج نہیں؛ محفوظ چراگاہیں: ${gp.map(p => p.name).join('، ')}۔${unr.ur}`,
+        `${REC_EN}, no trip is rated good; saved grazing places: ${gp.map(p => p.name).join(', ')}.${unr.en}`, { placeIds: gp.map(p => p.id!) })
       const t = good[0], tp = await placesOfTrip(t)
       const where = t.direction ? `${DIR_UR[t.direction as keyof typeof DIR_UR]}، گھر سے تقریباً ${fmtKmUr(t.furthestFromHomeM ?? 0)}` : ''
       const whereEn = t.direction ? ` — ${t.direction}, about ${fmtKm(t.furthestFromHomeM ?? 0)} from home` : ''
-      return A(`پچھلی بار اچھا چارہ ${agoUr(t.startedAt)} ملا تھا — ${where}۔${tp.length ? ` اس سفر میں آپ نے "${tp.map(p => p.name).join('"، "')}" محفوظ کیا تھا۔` : ''} (یہ اُس دن کی آپ کی اپنی رائے ہے۔)` +
-        (good.length > 1 ? ` کل ${good.length} سفر اچھے بتائے گئے۔` : ''),
-        `Good grazing was last recorded ${agoEn(t.startedAt)}${whereEn}.${tp.length ? ` You saved "${tp.map(p => p.name).join('", "')}" on that trip.` : ''} (Your own rating from that day.)`,
+      return A(`${REC_UR} آخری بار اچھا چارہ ${agoUr(t.startedAt)} درج ہوا — ${where}۔${tp.length ? ` اس سفر میں آپ نے "${tp.map(p => p.name).join('"، "')}" محفوظ کیا تھا۔` : ''} (یہ اُس دن کی آپ کی اپنی رائے ہے۔)` +
+        (good.length > 1 ? ` کل ${good.length} سفر اچھے درج ہیں۔` : '') + unr.ur,
+        `${REC_EN}, good grazing was last noted ${agoEn(t.startedAt)}${whereEn}.${tp.length ? ` You saved "${tp.map(p => p.name).join('", "')}" on that trip.` : ''} (Your own rating from that day.)${unr.en}`,
         { tripIds: good.slice(0, 3).map(x => x.id!), placeIds: [...tp, ...gp].map(p => p.id!) })
     }
     case 'last_trip_dir': {
       const t = (await lastEnded()).find(t => t.direction === intent.dir)
-      if (!t) return A(`میرے ریکارڈ میں ${DIR_UR[intent.dir]} کی طرف کوئی سفر نہیں۔`, `No recorded trip to the ${intent.dir}.`, undefined, false)
-      return A(`آپ آخری بار ${agoUr(t.startedAt)} ${DIR_UR[intent.dir]} کی طرف گئے تھے، گھر سے ${fmtKmUr(t.furthestFromHomeM ?? 0)} تک۔${t.rating ? ` چارہ: ${RATING_UR[t.rating]}۔` : ''}`,
-        `Your last trip to the ${intent.dir} was ${agoEn(t.startedAt)}, up to ${fmtKm(t.furthestFromHomeM ?? 0)} from home.${t.rating ? ` Grazing: ${t.rating}.` : ''}`, { tripIds: [t.id!] })
+      if (!t) return A(`${REC_UR} ${DIR_UR[intent.dir]} کی طرف کوئی سفر نہیں۔ ہو سکتا ہے آپ گئے ہوں لیکن وہ سفر CHOTA پر ریکارڈ نہ ہوا ہو۔`,
+        `${REC_EN}, there is no trip to the ${intent.dir}. You may have gone without CHOTA recording it.`, undefined, false)
+      return A(`${REC_UR} آپ آخری بار ${agoUr(t.startedAt)} ${DIR_UR[intent.dir]} کی طرف گئے تھے، گھر سے ${fmtKmUr(t.furthestFromHomeM ?? 0)} تک۔${t.rating ? ` چارہ: ${RATING_UR[t.rating]}۔` : ''}`,
+        `${REC_EN}, your last trip to the ${intent.dir} was ${agoEn(t.startedAt)}, up to ${fmtKm(t.furthestFromHomeM ?? 0)} from home.${t.rating ? ` Grazing: ${t.rating}.` : ''}`, { tripIds: [t.id!] })
     }
     case 'trips_this_month': {
       const m0 = new Date(now()); m0.setDate(1); m0.setHours(0, 0, 0, 0)
       const ts = (await lastEnded()).filter(t => t.startedAt >= m0.getTime())
-      const c = (r: string) => ts.filter(t => t.rating === r).length
-      return A(`اس مہینے ${ts.length} سفر ریکارڈ ہوئے — اچھا ${c('good')}، ٹھیک ${c('okay')}، کمزور ${c('poor')}۔`,
-        `${ts.length} trips recorded this month — good ${c('good')}, okay ${c('okay')}, poor ${c('poor')}.`, { tripIds: ts.map(t => t.id!) })
+      const c = (r: string) => ts.filter(t => t.rating === r).length, unrated = ts.filter(t => !t.rating).length
+      return A(`${REC_UR} اس مہینے ${ts.length} سفر ${ts.length === 1 ? 'ہے' : 'ہیں'} — اچھا ${c('good')}، ٹھیک ${c('okay')}، کمزور ${c('poor')}${unrated ? `، بغیر رائے ${unrated}` : ''}۔ (صرف وہ سفر جو CHOTA پر شروع کیے گئے۔)`,
+        `${REC_EN}, ${ts.length} trip${ts.length === 1 ? '' : 's'} this month — good ${c('good')}, okay ${c('okay')}, poor ${c('poor')}${unrated ? `, unrated ${unrated}` : ''}. (Only trips started in CHOTA.)`, { tripIds: ts.map(t => t.id!) })
     }
     case 'last_trip_duration': {
       const t = (await lastEnded())[0]
-      if (!t) return A('ابھی کوئی مکمل سفر نہیں۔', 'No completed trip yet.', undefined, false)
+      if (!t) return A(`${REC_UR} ابھی کوئی مکمل سفر نہیں۔`, `${REC_EN}, there is no completed trip yet.`, undefined, false)
       const ms = t.endedAt! - t.startedAt, n = await trailNote(t.id!)
-      return A(`پچھلا سفر (${agoUr(t.startedAt)}) ${durUr(ms)} کا تھا، ${fmtKmUr(n.tr.recordedM)} ریکارڈ ہوئے۔${n.ur}`,
-        `Your last trip (${agoEn(t.startedAt)}) lasted ${durEn(ms)}; ${fmtKm(n.tr.recordedM)} were recorded.${n.en}`, { tripIds: [t.id!] })
+      return A(`${REC_UR} پچھلا سفر (${agoUr(t.startedAt)}) ${durUr(ms)} کا تھا، ${fmtKmUr(n.tr.recordedM)} ریکارڈ ہوئے۔${n.ur}`,
+        `${REC_EN}, your last trip (${agoEn(t.startedAt)}) lasted ${durEn(ms)}; ${fmtKm(n.tr.recordedM)} were recorded.${n.en}`, { tripIds: [t.id!] })
     }
     case 'been_here': {
       if (!f) return A('ابھی GPS نہیں ملا۔', 'No GPS fix yet.', undefined, false)
@@ -181,10 +186,12 @@ export async function answer(text: string): Promise<Answer> {
       const near = (await db.points.toArray()).filter(p => p.tripId !== activeTrip() && distanceM(p, f) < 300)
       const byTrip = new Map<number, number>(); near.forEach(p => byTrip.set(p.tripId, Math.max(byTrip.get(p.tripId) ?? 0, p.t)))
       const np = places.filter(p => distanceM(p, f) < 300)
-      if (!byTrip.size && !np.length) return A('میرے ریکارڈ میں آپ یہاں پہلے نہیں آئے۔ (صرف وہ سفر جو CHOTA نے ریکارڈ کیے۔)', 'In my records you have not been here before (only trips CHOTA recorded).', undefined)
+      if (!byTrip.size && !np.length) return A(`${REC_UR} آپ یہاں پہلے نہیں آئے۔ (صرف وہ سفر جو CHOTA نے ریکارڈ کیے؛ ہو سکتا ہے آپ پہلے آئے ہوں۔)`, `${REC_EN}, you have not been here before (only trips CHOTA recorded; you may have been here without it).`, undefined)
       const lastT = Math.max(...byTrip.values(), ...np.map(p => p.createdAt))
-      return A(`جی ہاں، آپ یہاں ${byTrip.size} بار آئے، آخری بار ${agoUr(lastT)}۔${np.length ? ` قریب محفوظ جگہ: "${np[0].name}"۔` : ''}`,
-        `Yes — ${byTrip.size} recorded visit(s), last ${agoEn(lastT)}.${np.length ? ` Nearby saved place: "${np[0].name}".` : ''}`,
+      const placeUr = np.length ? ` قریب محفوظ جگہ: "${np[0].name}"۔` : '', placeEn = np.length ? ` Nearby saved place: "${np[0].name}".` : ''
+      if (!byTrip.size) return A(`${REC_UR} یہاں کوئی سفر نہیں گزرا، لیکن${placeUr}`, `${REC_EN}, no recorded trip passed here, but there is a saved place.${placeEn}`, { placeIds: np.map(p => p.id!) })
+      return A(`جی ہاں، ${REC_UR} آپ یہاں ${byTrip.size} بار آئے، آخری بار ${agoUr(lastT)}۔${placeUr}`,
+        `Yes — ${REC_EN.toLowerCase()}, ${byTrip.size} visit(s), last ${agoEn(lastT)}.${placeEn}`,
         { tripIds: [...byTrip.keys()], placeIds: np.map(p => p.id!) })
     }
     case 'place_distance': {
@@ -218,10 +225,10 @@ export async function answer(text: string): Promise<Answer> {
           continue
         }
         ur.push(`${SPECIES_UR[s.species]}: آخری تصدیق ${s.confirmed!.count} (${agoUr(s.confirmed!.confirmedAt)})۔` +
-          (s.eventsSince.length ? ` اس کے بعد +${s.additions} −${s.removals}، اندازہ ${s.estimate}۔` : '') +
+          (s.eventsSince.length ? ` اس کے بعد درج شدہ تبدیلیاں +${s.additions} −${s.removals}، اندازہ ${s.estimate} (صرف درج شدہ تبدیلیوں پر مبنی)۔` : '') +
           (s.status === 'stale' ? ` ⚠️ ${s.daysSinceConfirmed} دن سے دوبارہ گنتی نہیں ہوئی۔` : ''))
         en.push(`${SPECIES_EN[s.species]}: last confirmed ${s.confirmed!.count} (${agoEn(s.confirmed!.confirmedAt)}).` +
-          (s.eventsSince.length ? ` Since then +${s.additions} −${s.removals}, estimate ${s.estimate}.` : '') +
+          (s.eventsSince.length ? ` Recorded since: +${s.additions} −${s.removals}, estimate ${s.estimate} (only from recorded changes).` : '') +
           (s.status === 'stale' ? ` ⚠️ Not recounted for ${s.daysSinceConfirmed} days.` : ''))
       }
       return A(ur.join(' '), en.join(' '))

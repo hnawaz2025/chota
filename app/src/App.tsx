@@ -431,6 +431,7 @@ function History() {
     <div>
       {sel && <MapView focus={{ tripIds: [sel] }} className="map short" />}
       <div className="pad">
+        <p className="muted"><T ur="صرف وہ سفر جو CHOTA پر ریکارڈ ہوئے — مکمل تاریخ نہیں" en="Only trips recorded in CHOTA — not a complete history" /></p>
         {trips.filter(t => t.endedAt).map(t => (
           <button key={t.id} className={`card row trip ${t.rating ?? ''} ${sel === t.id ? 'sel' : ''}`} onClick={() => setSel(t.id)}>
             <span><T ur={agoUr(t.startedAt)} en={new Date(t.startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} /></span>

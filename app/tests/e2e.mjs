@@ -47,10 +47,12 @@ const d6 = await dump(); step(6, `db: trips=${JSON.stringify(d6.trips)} points=$
 expect(6, d6.trips[0]?.endedAt && d6.trips[0].rating === 'good' && d6.trips[0].gapCount === 0, 'trip ended, rated, no gaps')
 // 7. Days later: ask about good grazing
 await settings(); await click('+3 days'); await home()
-const h7 = await ask('پچھلی بار اچھا چارہ کہاں ملا تھا؟'); step(7, 'good grazing: ' + h7); expect(7, h7.includes('3 دن پہلے'), 'grazing 3 days ago'); await shot('07-good-grazing')
+const h7 = await ask('پچھلی بار اچھا چارہ کہاں ملا تھا؟'); step(7, 'good grazing: ' + h7); expect(7, h7.includes('3 دن پہلے') && h7.includes('میرے ریکارڈ میں'), 'grazing 3 days ago, framed as my records'); await shot('07-good-grazing')
 // 8. Distance home (position is still at end of trip walk)
 await home(); const h8 = await ask('Ghar kitni door hai?'); step(8, 'home: ' + h8); expect(8, h8.includes('کلومیٹر') && !h8.includes('آخری GPS'), 'fresh home distance'); await shot('08-home-distance')
-await home(); const h8b = await ask('Main is jagah pehle aya hoon?'); step('8b', 'been here: ' + h8b); expect('8b', h8b.includes('1 بار'), 'one recorded visit')
+await home(); const h8b = await ask('Main is jagah pehle aya hoon?'); step('8b', 'been here: ' + h8b); expect('8b', h8b.includes('1 بار') && h8b.includes('میرے ریکارڈ میں'), 'one recorded visit, framed as my records')
+await home(); const h8d = await ask('Is mahine kitne trips kiye?'); step('8d', 'month: ' + h8d); expect('8d', h8d.includes('میرے ریکارڈ میں') && h8d.includes('CHOTA پر شروع'), 'month count scoped to recorded trips')
+await home(); const h8e = await ask('Pichli dafa junoob kab gaya tha?'); step('8e', 'south: ' + h8e); expect('8e', h8e.includes('ریکارڈ نہ ہوا ہو'), 'no record != never went')
 await home(); const h8c = await ask('پرانا چارہ کتنی دور ہے؟'); step('8c', 'place: ' + h8c); expect('8c', h8c.includes('میٹر'), 'place distance')
 // 10. Reminder
 await home(); const h10 = await ask('کل صبح ریوڑ کی گنتی کرنا یاد دلانا'); step(10, 'reminder: ' + h10); expect(10, h10.includes('کل صبح 8 بجے'), 'reminder tomorrow 8am')

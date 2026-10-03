@@ -1,6 +1,6 @@
 # CHOTA — status
 
-_Last updated: 2026-10-03 · milestones 1–2 done_
+_Last updated: 2026-10-03 · milestones 1–3 done_
 
 **Product (locked):** an offline-first Urdu pastoral memory assistant for livestock herders around Nushki, Balochistan.
 **Principle:** CHOTA distinguishes *recorded* from *assumed*. It never treats missing records as truth.
@@ -12,8 +12,8 @@ _Last updated: 2026-10-03 · milestones 1–2 done_
 | 0 | Baseline commit, existing 12-step demo re-run | ✅ all steps ran, no console errors |
 | 1 | Honest Trail (GPS freshness, gaps, forgotten trips) | ✅ done, e2e green |
 | 2 | Herd-count safety (read-back before writing, no-baseline species) | ✅ done, e2e green |
-| 3 | "In my records" wording on historical answers | ⏳ next |
-| 4 | Full test run + failure report | ⏳ |
+| 3 | "In my records" wording on historical answers | ✅ done, e2e green |
+| 4 | Full test run + failure report | ⏳ next |
 | 5 | Docs (README, FINDINGS) + PWA limits report | ⏳ |
 
 ## What milestone 1 changed
@@ -63,13 +63,21 @@ _Last updated: 2026-10-03 · milestones 1–2 done_
   - assumed quantity
   - "dawai li aur bakri ko di" stays `unknown` (Test 5: an LLM turned this into a death)
 
+## What milestone 3 changed
+- All historical answers start with "میرے ریکارڈ میں" / "In my records":
+  - good grazing, last trip in a direction, trips this month, last trip duration, been here
+- "No record" is never presented as "never happened". For example: "ہو سکتا ہے آپ گئے ہوں لیکن وہ سفر CHOTA پر ریکارڈ نہ ہوا ہو".
+- Trip counts say "only trips started in CHOTA" and report unrated trips separately. Good-grazing answers mention unrated trips.
+- The herd estimate is described as "based only on recorded changes".
+- The history screen header says: "Only trips recorded in CHOTA — not a complete history".
+
 ## Tests
 - `npm test`: 32/32 Urdu intent cases, plus 8 trail-gap unit tests.
 - `tests/e2e.mjs` (Playwright, production build, 390×844):
   - the 12 milestone steps
   - T1 forgotten trip, T2 gap drawn dotted, T3 stale real-GPS fix
-
   - H1 rejected read-back writes nothing, H2 no-baseline species with assumed quantity
+  - 7/8b/8d/8e: historical answers are framed "in my records", and "no record" never means "never went"
   - step 12c now confirms the read-back before the recount is written
 
   It now asserts and exits non-zero on failure. Status: **all pass, 0 console errors.**
