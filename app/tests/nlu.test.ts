@@ -29,6 +29,9 @@ const cases: [string, string, (i: any) => boolean][] = [
   ['ek bakri ne bacha diya', 'herd_event', i => i.events[0].type === 'birth'],
   ['ایک بکری اور دو بھیڑیں مر گئیں', 'herd_event', i => i.events.length === 2 && i.events[1].qty === 2],
   ['تین نہیں چار بکریاں بیچیں', 'herd_event', i => i.events[0].qty === 4],
+  ['ایک بکری اور دو بھیڑیں مر گئیں', 'herd_event', i => i.events.every((e: any) => !e.qtyAssumed)],
+  ['bakri mar gayi', 'herd_event', i => i.events[0].qty === 1 && i.events[0].qtyAssumed],
+  ['dawai li aur bakri ko di', 'unknown', () => true],   // Test 5: an LLM turned this into a death
   ['kitni bakriyan hain?', 'herd_status', () => true],
   ['السلام علیکم', 'unknown', () => true],
 ]

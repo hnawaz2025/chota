@@ -1,18 +1,21 @@
 import { db, type Reminder } from './db'
 import { now, DAY } from './clock'
-import { herdStatus, trackedSpecies, SPECIES_UR, STALE_DAYS } from './herd'
+import { herdStatus, trackedSpecies, SPECIES_UR_OBL, STALE_DAYS } from './herd'
 
 /** Bounded proactive memory: only facts derived from CHOTA's own records. No advice. */
 async function proactive() {
   for (const sp of await trackedSpecies()) {
     const s = await herdStatus(sp)
-    if (s.status !== 'stale') continue
-    const recent = await db.reminders.where('kind').equals(`herd_stale:${sp}`)
+    if (s.status !== 'stale' && s.status !== 'none') continue
+    const kind = s.status === 'none' ? `herd_nobaseline:${sp}` : `herd_stale:${sp}`
+    const recent = await db.reminders.where('kind').equals(kind)
       .filter(r => r.createdAt > now() - 3 * DAY || r.status === 'pending').count()
     if (recent) continue
     await db.reminders.add({
-      text: `${SPECIES_UR[sp]} کی گنتی ${s.daysSinceConfirmed} دن سے تصدیق نہیں ہوئی (${STALE_DAYS}+ دن)۔ آج دوبارہ گنتی کرنا چاہیں گے؟`,
-      dueAt: now(), status: 'pending', source: 'system', kind: `herd_stale:${sp}`, createdAt: now(),
+      text: s.status === 'none'
+        ? `${SPECIES_UR_OBL[sp]} کی تبدیلیاں درج ہیں لیکن کبھی گنتی تصدیق نہیں ہوئی، اس لیے کل تعداد معلوم نہیں۔ گنتی کرنا چاہیں گے؟`
+        : `${SPECIES_UR_OBL[sp]} کی گنتی ${s.daysSinceConfirmed} دن سے تصدیق نہیں ہوئی (${STALE_DAYS}+ دن)۔ آج دوبارہ گنتی کرنا چاہیں گے؟`,
+      dueAt: now(), status: 'pending', source: 'system', kind, createdAt: now(),
     })
   }
 }

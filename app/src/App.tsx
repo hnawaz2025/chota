@@ -5,8 +5,8 @@ import { now, shiftDays, clockOffsetDays } from './clock'
 import { onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, currentFixState, checkOpenTrip, resumeTrip, type Fix, type OpenTrip } from './gps'
 import { spanUr, spanEn } from './trail'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
-import { answer, agoUr, agoEn, dueUr, dueEn, type Answer } from './answer'
-import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_EN, type HerdStatus } from './herd'
+import { answer, commitPending, agoUr, agoEn, dueUr, dueEn, type Answer } from './answer'
+import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN, type HerdStatus } from './herd'
 import { signOf } from './nlu'
 import { checkReminders, requestNotifications } from './reminders'
 import { speak, canListen, listen, hasUrduVoice } from './speech'
@@ -82,7 +82,7 @@ function Home({ go }: { go: (s: Screen) => void }) {
   const home = useLiveQuery(getHome)
   const pending = useLiveQuery(() => db.reminders.where('status').anyOf('pending', 'fired').count()) ?? 0
   const herd = useLiveQuery(async () => Promise.all((await trackedSpecies()).map(herdStatus)), [])
-  const stale = herd?.filter(h => h.status === 'stale') ?? []
+  const stale = herd?.filter(h => h.status === 'stale' || h.status === 'none') ?? []
   const tid = activeTrip()
   const hd = home && fix ? distanceM(fix, home) : undefined
   const fs = currentFixState()
@@ -95,7 +95,9 @@ function Home({ go }: { go: (s: Screen) => void }) {
       </div>
       {stale.map(s => (
         <button key={s.species} className="warn" onClick={() => go('herd')}>
-          <T ur={`⚠️ ${SPECIES_UR[s.species]} کی گنتی ${s.daysSinceConfirmed} دن سے تصدیق نہیں ہوئی`} en={`${SPECIES_EN[s.species]} not recounted for ${s.daysSinceConfirmed} days`} />
+          {s.status === 'none'
+            ? <T ur={`⚠️ ${SPECIES_UR[s.species]}: تبدیلیاں درج ہیں، گنتی کبھی تصدیق نہیں ہوئی`} en={`${SPECIES_EN[s.species]}: changes recorded but never counted`} />
+            : <T ur={`⚠️ ${SPECIES_UR_OBL[s.species]} کی گنتی ${s.daysSinceConfirmed} دن سے تصدیق نہیں ہوئی`} en={`${SPECIES_EN[s.species]} not recounted for ${s.daysSinceConfirmed} days`} />}
         </button>
       ))}
       <div className="grid4">
@@ -242,6 +244,12 @@ function Ask() {
     const a = await answer(text); setLog(l => [{ q: text, a }, ...l].slice(0, 6)); setQ(''); speak(a.ur)
   }
   const cur = log[0]
+  const resolve = async (yes: boolean) => {
+    if (!cur?.a.pending) return
+    const a: Answer = yes ? await commitPending(cur.a.pending)
+      : { ur: 'ٹھیک ہے، کچھ درج نہیں کیا۔ دوبارہ بولیں یا ریوڑ کے صفحے پر خود درج کریں۔', en: 'OK, nothing was saved. Say it again, or enter it on the Herd screen.', ok: false, intent: cur.a.intent }
+    setLog(l => [{ q: cur.q, a }, ...l.slice(1)]); speak(a.ur)
+  }
   return (
     <div className="ask">
       <div className="askbar">
@@ -256,6 +264,10 @@ function Ask() {
           <div className="q" dir="auto">“{cur.q}”</div>
           <T ur={cur.a.ur} en={cur.a.en} big />
           {hasUrduVoice() && <button className="speak" onClick={() => speak(cur.a.ur)}>🔊</button>}
+          {cur.a.pending && <div className="rate confirm">
+            <button className="good" onClick={() => resolve(true)}>✓<T ur="ہاں، درج کریں" en="Yes, save" /></button>
+            <button className="poor" onClick={() => resolve(false)}>✗<T ur="نہیں، غلط ہے" en="No, wrong" /></button>
+          </div>}
         </div>
       )}
       {cur?.a.map && <MapView focus={cur.a.map} className="map short" />}
@@ -328,16 +340,22 @@ function Herd() {
   )
 }
 function HerdCard({ h, onCount, onEvent }: { h: HerdStatus; onCount: () => void; onEvent: () => void }) {
-  const c = h.confirmed!
+  const c = h.confirmed
   return (
     <div className={`card herd ${h.status}`}>
       <div className="herd-head"><T ur={SPECIES_UR[h.species]} en={SPECIES_EN[h.species]} big /></div>
       <div className="herd-nums">
-        <div className="confirmed"><b>{c.count}</b><T ur="آخری تصدیق شدہ گنتی" en="Last confirmed count" /><small><T ur={agoUr(c.confirmedAt)} en={`${new Date(c.confirmedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · ${agoEn(c.confirmedAt)}`} /></small></div>
-        <div className="estimate"><b>{h.estimate}</b><T ur="اندازاً اب" en="Estimated now" />
-          <small><T ur={`درج شدہ: +${h.additions} / −${h.removals}`} en={`Recorded since: +${h.additions} / −${h.removals}`} /></small></div>
+        {c
+          ? <div className="confirmed"><b>✓ {c.count}</b><T ur="آخری تصدیق شدہ گنتی" en="Last confirmed count" /><small><T ur={agoUr(c.confirmedAt)} en={`${new Date(c.confirmedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · ${agoEn(c.confirmedAt)}`} /></small></div>
+          : <div className="confirmed none"><b>?</b><T ur="کوئی تصدیق شدہ گنتی نہیں" en="Never counted" /></div>}
+        {c && h.eventsSince.length > 0
+          ? <div className="estimate"><b>≈ {h.estimate}</b><T ur="اندازاً اب (تصدیق شدہ نہیں)" en="Estimate, not confirmed" />
+              <small><T ur={`درج شدہ: +${h.additions} / −${h.removals}`} en={`Recorded since: +${h.additions} / −${h.removals}`} /></small></div>
+          : c ? <div className="estimate quiet"><T ur="اس کے بعد کوئی تبدیلی درج نہیں" en="No change recorded since" /></div>
+          : <div className="estimate"><b>+{h.additions} / −{h.removals}</b><T ur="درج شدہ تبدیلیاں" en="Recorded changes" /><small><T ur="کل تعداد معلوم نہیں" en="Total unknown" /></small></div>}
       </div>
       {h.eventsSince.length > 0 && <ul className="events">{h.eventsSince.slice(-4).map(e => <li key={e.id}><span dir="ltr">{e.delta > 0 ? '+' : ''}{e.delta}</span> {e.type} · {agoEn(e.at)}{e.sourceText && <q dir="auto">{e.sourceText}</q>}</li>)}</ul>}
+      {h.status === 'none' && <div className="warn-line"><T ur="⚠️ گنتی کر کے درج کریں، تب ہی کل تعداد بتائی جا سکتی ہے۔" en="Count the animals to set a baseline; until then the total is unknown." /></div>}
       {h.status === 'stale' && <div className="warn-line"><T ur={`⚠️ ${h.daysSinceConfirmed} دن سے دوبارہ گنتی نہیں ہوئی۔ اندازہ پرانا ہو سکتا ہے۔`} en={`Not physically reconfirmed for ${h.daysSinceConfirmed} days. The estimate may be stale.`} /></div>}
       {h.status === 'estimated' && <div className="note-line"><T ur="اندازہ صرف درج شدہ واقعات پر مبنی ہے" en="Estimate is based only on recorded events" /></div>}
       <div className="actions">
@@ -368,7 +386,7 @@ function CountPad({ species, onClose }: { species?: Species; onClose: () => void
       <T ur="جانور گن کر تعداد لکھیں" en="Count and enter the number" big />
       {!species && <div className="chips">{(['goat', 'sheep', 'camel', 'cattle'] as Species[]).map(s => <button key={s} className={sp === s ? 'on' : ''} onClick={() => setSp(s)}>{SPECIES_UR[s]}</button>)}</div>}
       <input className="num" inputMode="numeric" autoFocus value={n} onChange={e => setN(e.target.value.replace(/\D/g, ''))} placeholder="47" />
-      <button className="big-btn" onClick={save}>✓ <T ur={`${SPECIES_UR[sp]} کی تصدیق`} en="Confirm count" /></button>
+      <button className="big-btn" onClick={save}>✓ <T ur={`${SPECIES_UR_OBL[sp]} کی تصدیق`} en="Confirm count" /></button>
     </Modal>
   )
 }

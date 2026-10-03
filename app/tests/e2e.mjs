@@ -62,10 +62,32 @@ await settings(); await click('+14 days'); await p.reload(); await p.waitForTime
 if (await p.locator('.modal').count()) { step('12a', 'proactive: ' + await p.textContent('.modal')); await shot('12a-proactive'); await p.getByText('بعد میں').first().click() }
 await shot('12b-home-stale'); await click('ریوڑ کی گنتی'); await p.waitForTimeout(500)
 const h12 = await p.textContent('.card.herd'); step(12, 'herd: ' + h12); expect(12, h12.includes('18 دن'), 'stale warning'); await shot('12-herd-stale')
-// reconcile by voice-style text
-await home(); const h12c = await ask('Mere paas ab 46 bakriyan hain'); step('12c', 'reconcile: ' + h12c); expect('12c', h12c.includes('46'), 'recount 46')
+// reconcile by voice-style text: read back first, written only after "yes"
+const nConf = (await dump()).confirmations.length
+await home(); const h12c = await ask('Mere paas ab 46 bakriyan hain'); step('12c', 'read-back: ' + h12c)
+expect('12c', h12c.includes('میں نے یہ سمجھا') && h12c.includes('46'), 'read-back before saving')
+expect('12c', (await dump()).confirmations.length === nConf, 'nothing written before confirmation')
+await click('ہاں، درج کریں'); await p.waitForTimeout(600); const h12d = await p.textContent('.answer'); step('12c', 'confirmed: ' + h12d)
+expect('12c', h12d.includes('تصدیق شدہ گنتی') && (await dump()).confirmations.length === nConf + 1, 'recount 46 written after yes')
+
+// ---------------- Herd-count safety ----------------
+// H1. Rejected read-back writes nothing.
+const nEv = (await dump()).herdEvents.length
+await home(); const hh1 = await ask('دو بکریاں بیچیں'); step('H1', 'read-back: ' + hh1)
+await click('نہیں، غلط ہے'); await p.waitForTimeout(500)
+expect('H1', (await dump()).herdEvents.length === nEv, 'rejected sale not written')
+// H2. Species with no baseline + no number said: assumed qty is called out; after "yes" the change is visible, total unknown.
+await home(); const hh2 = await ask('bher mar gayi'); step('H2', 'read-back: ' + hh2)
+expect('H2', hh2.includes('ایک مانی'), 'assumed quantity called out')
+await click('ہاں، درج کریں'); await p.waitForTimeout(600); const hh2b = await p.textContent('.answer'); step('H2', 'saved: ' + hh2b)
+expect('H2', hh2b.includes('کل تعداد معلوم نہیں'), 'no-baseline total stated as unknown')
+await home(); const warns = (await p.locator('.warn').allTextContents()).join(' | '); step('H2', 'home warnings: ' + warns)
+expect('H2', warns.includes('کبھی تصدیق نہیں'), 'home flags never-counted species')
+await click('ریوڑ کی گنتی'); await p.waitForTimeout(500)
+const cards = (await p.locator('.card.herd').allTextContents()).join(' | '); step('H2', 'herd cards: ' + cards); await shot('H2-herd-nobaseline')
+expect('H2', cards.includes('کوئی تصدیق شدہ گنتی نہیں') && cards.includes('−1'), 'sheep card shows change without baseline')
 // offline check
-await ctx.setOffline(true); await p.reload(); await p.waitForTimeout(2500); await click('نقشہ و جگہیں'); await p.waitForTimeout(1500); await shot('13-offline-map')
+await ctx.setOffline(true); await p.reload(); await p.waitForTimeout(2500); await dismissReminders(); await click('نقشہ و جگہیں'); await p.waitForTimeout(1500); await shot('13-offline-map')
 const off = await p.evaluate(() => [...document.querySelectorAll('img.leaflet-image-layer')].some(i => i.complete && i.naturalWidth > 0))
 step('offline', 'map img loaded: ' + off); expect('offline', off, 'offline basemap')
 await ctx.setOffline(false)

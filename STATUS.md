@@ -1,6 +1,6 @@
 # CHOTA — status
 
-_Last updated: 2026-10-03 · milestone 1 (Honest Trail) done_
+_Last updated: 2026-10-03 · milestones 1–2 done_
 
 **Product (locked):** an offline-first Urdu pastoral memory assistant for livestock herders around Nushki, Balochistan.
 **Principle:** CHOTA distinguishes *recorded* from *assumed*. It never treats missing records as truth.
@@ -11,8 +11,8 @@ _Last updated: 2026-10-03 · milestone 1 (Honest Trail) done_
 |---|---|---|
 | 0 | Baseline commit, existing 12-step demo re-run | ✅ all steps ran, no console errors |
 | 1 | Honest Trail (GPS freshness, gaps, forgotten trips) | ✅ done, e2e green |
-| 2 | Herd-count safety (read-back before writing, no-baseline species) | ⏳ next |
-| 3 | "In my records" wording on historical answers | ⏳ |
+| 2 | Herd-count safety (read-back before writing, no-baseline species) | ✅ done, e2e green |
+| 3 | "In my records" wording on historical answers | ⏳ next |
 | 4 | Full test run + failure report | ⏳ |
 | 5 | Docs (README, FINDINGS) + PWA limits report | ⏳ |
 
@@ -43,11 +43,34 @@ _Last updated: 2026-10-03 · milestone 1 (Honest Trail) done_
 - Bug found by the new e2e and fixed: a reminder pop-up could cover the forgotten-trip prompt. Reminders now wait.
 - Demo history: breadcrumbs every 2 min. The west trip from 19 days ago has a deliberate 50-min screen-off gap.
 
+## What milestone 2 changed
+- Herd changes and counts understood from typed or voice text are **never written directly**:
+  - the app reads back what it understood ("میں نے یہ سمجھا: 2 بکریاں — فروخت۔ کیا یہ درست ہے؟")
+  - it writes only after ✓; ✗ writes nothing
+  - a quantity the parser assumed (no number said) is called out: "تعداد نہیں بتائی، ایک مانی"
+
+  Keypad entries on the Herd screen are explicit taps and still save directly.
+- Species with recorded changes but **no confirmed count** are now visible:
+  - a herd card with "?" and "Total unknown"
+  - a home-screen warning and a proactive reminder
+
+  Before this they were invisible, because only counted species were listed.
+- Confirmed vs estimate are visually distinct:
+  - confirmed: solid green box with ✓
+  - estimate: dashed box with ≈, labelled "not confirmed"; shown only when changes exist since the count
+- Urdu grammar: singular ("1 بکری") and oblique forms ("بکریوں کی گنتی"). The old text said "بکریاں کی گنتی".
+- New intent tests:
+  - assumed quantity
+  - "dawai li aur bakri ko di" stays `unknown` (Test 5: an LLM turned this into a death)
+
 ## Tests
-- `npm test`: 29/29 Urdu intent cases, plus 8 trail-gap unit tests.
+- `npm test`: 32/32 Urdu intent cases, plus 8 trail-gap unit tests.
 - `tests/e2e.mjs` (Playwright, production build, 390×844):
   - the 12 milestone steps
   - T1 forgotten trip, T2 gap drawn dotted, T3 stale real-GPS fix
+
+  - H1 rejected read-back writes nothing, H2 no-baseline species with assumed quantity
+  - step 12c now confirms the read-back before the recount is written
 
   It now asserts and exits non-zero on failure. Status: **all pass, 0 console errors.**
 

@@ -1,14 +1,52 @@
 /** Executes a parsed intent against the local DB and returns a templated Urdu + English answer. */
 import { db, getHome, type Place, type Trip } from './db'
 import { now, DAY } from './clock'
-import { parse, signOf, type Intent } from './nlu'
+import { parse, signOf, type Intent, type HerdEventParse } from './nlu'
+import type { Species } from './db'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
 import { lastFix, activeTrip, currentFixState } from './gps'
 import { splitTrail, spanUr, spanEn } from './trail'
-import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_EN } from './herd'
+import { herdStatus, trackedSpecies, confirmCount, countUr, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN } from './herd'
 
 export interface MapFocus { tripIds?: number[]; placeIds?: number[]; homeLine?: boolean; wayBack?: boolean }
-export interface Answer { ur: string; en: string; map?: MapFocus; ok: boolean; intent: Intent['kind'] }
+/** A herd change understood from free text / voice. Nothing is written until the herder confirms the read-back. */
+export type PendingWrite =
+  | { kind: 'herd_event'; events: HerdEventParse[]; sourceText: string }
+  | { kind: 'herd_confirm'; counts: { species: Species; count: number }[]; sourceText: string }
+export interface Answer { ur: string; en: string; map?: MapFocus; ok: boolean; intent: Intent['kind']; pending?: PendingWrite }
+
+const TYPE_UR = { birth: 'پیدائش', purchase: 'خرید', sale: 'فروخت', death: 'موت', loss: 'گم/چوری', slaughter: 'ذبح', other: '' }
+const TYPE_EN = { birth: 'born', purchase: 'bought', sale: 'sold', death: 'died', loss: 'lost/stolen', slaughter: 'slaughtered', other: '' }
+
+/** Read-back of what was understood, stated before anything is saved. Assumed quantities are called out. */
+function readBack(p: PendingWrite) {
+  const ur = p.kind === 'herd_event'
+    ? p.events.map(e => `${countUr(e.qty, e.species)} — ${TYPE_UR[e.type]}${e.qtyAssumed ? ' (تعداد نہیں بتائی، ایک مانی)' : ''}`).join('؛ ')
+    : p.counts.map(c => `${countUr(c.count, c.species)} — آج کی پوری گنتی`).join('؛ ')
+  const en = p.kind === 'herd_event'
+    ? p.events.map(e => `${e.qty} ${SPECIES_EN[e.species].toLowerCase()} ${TYPE_EN[e.type]}${e.qtyAssumed ? ' (no number said; assumed 1)' : ''}`).join('; ')
+    : p.counts.map(c => `${c.count} ${SPECIES_EN[c.species].toLowerCase()} — today's full count`).join('; ')
+  return { ur: `میں نے یہ سمجھا: ${ur}۔ کیا یہ درست ہے؟ تصدیق کے بغیر کچھ درج نہیں ہو گا۔`, en: `I understood: ${en}. Is that right? Nothing is saved until you confirm.` }
+}
+
+/** The herder confirmed the read-back: write it. */
+export async function commitPending(p: PendingWrite): Promise<Answer> {
+  const ur: string[] = [], en: string[] = []
+  if (p.kind === 'herd_confirm') for (const c of p.counts) {
+    const before = await herdStatus(c.species)
+    await confirmCount(c.species, c.count, 'voice')
+    const diff = before.estimate !== undefined ? c.count - before.estimate : undefined
+    ur.push(`${countUr(c.count, c.species)} — آج کی تصدیق شدہ گنتی۔` + (diff ? ` پچھلا اندازہ ${before.estimate} تھا (فرق ${diff > 0 ? '+' : ''}${diff})۔ کیا کوئی پیدائش، خرید، فروخت یا نقصان درج ہونے سے رہ گیا؟` : ''))
+    en.push(`${c.count} ${SPECIES_EN[c.species].toLowerCase()} — confirmed today.` + (diff ? ` Previous estimate was ${before.estimate} (difference ${diff > 0 ? '+' : ''}${diff}). Was a birth, purchase, sale or loss not recorded?` : ''))
+  }
+  else for (const e of p.events) {
+    await db.herdEvents.add({ species: e.species, delta: signOf(e.type) * e.qty, type: e.type, at: now(), sourceText: p.sourceText, tripId: activeTrip() })
+    const s = await herdStatus(e.species)
+    ur.push(`درج کر لیا: ${countUr(e.qty, e.species)} — ${TYPE_UR[e.type]}۔` + (s.estimate !== undefined ? ` اندازاً اب ${s.estimate} (تصدیق شدہ نہیں)۔` : ` ${SPECIES_UR_OBL[e.species]} کی کوئی تصدیق شدہ گنتی نہیں، اس لیے کل تعداد معلوم نہیں۔`))
+    en.push(`Recorded: ${e.qty} ${SPECIES_EN[e.species].toLowerCase()} — ${e.type}.` + (s.estimate !== undefined ? ` Estimated now ${s.estimate} (not confirmed).` : ` No confirmed ${SPECIES_EN[e.species].toLowerCase()} count, so the total is unknown.`))
+  }
+  return { ur: ur.join(' '), en: en.join(' '), ok: true, intent: p.kind }
+}
 
 const RATING_UR = { good: 'اچھا', okay: 'ٹھیک', poor: 'کمزور' } as const
 export const agoUr = (t: number) => { const d = Math.floor((now() - t) / DAY); return d <= 0 ? 'آج' : d === 1 ? 'کل' : `${d} دن پہلے` }
@@ -161,33 +199,24 @@ export async function answer(text: string): Promise<Answer> {
         kind: /گنتی|count|گن/.test(intent.text) ? 'herd_count' : undefined })
       return A(`یاد دہانی لگا دی: ${dueUr(intent.dueAt)} — "${intent.text}"`, `Reminder set for ${dueEn(intent.dueAt)}: "${intent.text}"`)
     }
-    case 'herd_confirm': {
-      const ur: string[] = [], en: string[] = []
-      for (const c of intent.counts) {
-        const before = await herdStatus(c.species)
-        await confirmCount(c.species, c.count, 'reconcile')
-        const diff = before.estimate !== undefined ? c.count - before.estimate : undefined
-        ur.push(`${c.count} ${SPECIES_UR[c.species]} — آج کی تصدیق شدہ گنتی۔` + (diff ? ` پچھلا اندازہ ${before.estimate} تھا (فرق ${diff > 0 ? '+' : ''}${diff})۔ کیا کوئی پیدائش، خرید، فروخت یا نقصان درج ہونے سے رہ گیا؟` : ''))
-        en.push(`${c.count} ${SPECIES_EN[c.species].toLowerCase()} — confirmed today.` + (diff ? ` Previous estimate was ${before.estimate} (difference ${diff > 0 ? '+' : ''}${diff}). Was a birth, purchase, sale or loss not recorded?` : ''))
-      }
-      return A(ur.join(' '), en.join(' '))
-    }
+    case 'herd_confirm':
     case 'herd_event': {
-      const ur: string[] = [], en: string[] = []
-      const TYPE_UR = { birth: 'پیدائش', purchase: 'خرید', sale: 'فروخت', death: 'موت', loss: 'گم/چوری', slaughter: 'ذبح', other: '' }
-      for (const e of intent.events) {
-        await db.herdEvents.add({ species: e.species, delta: signOf(e.type) * e.qty, type: e.type, at: now(), sourceText: text, tripId: activeTrip() })
-        const s = await herdStatus(e.species)
-        ur.push(`درج کر لیا: ${e.qty} ${SPECIES_UR[e.species]} — ${TYPE_UR[e.type]}۔` + (s.estimate !== undefined ? ` اندازاً اب ${s.estimate} (تصدیق شدہ نہیں)۔` : ''))
-        en.push(`Recorded: ${e.qty} ${SPECIES_EN[e.species].toLowerCase()} — ${e.type}.` + (s.estimate !== undefined ? ` Estimated now ${s.estimate} (not confirmed).` : ''))
-      }
-      return A(ur.join(' '), en.join(' '))
+      const pending: PendingWrite = intent.kind === 'herd_event'
+        ? { kind: 'herd_event', events: intent.events, sourceText: text }
+        : { kind: 'herd_confirm', counts: intent.counts, sourceText: text }
+      const rb = readBack(pending)
+      return { ...A(rb.ur, rb.en), pending }
     }
     case 'herd_status': {
       const sp = await trackedSpecies()
       if (!sp.length) return A('ابھی کوئی گنتی محفوظ نہیں۔ مثلاً کہیں: "میرے پاس 47 بکریاں ہیں"۔', 'No herd count yet. Say e.g. "I have 47 goats".', undefined, false)
       const ur: string[] = [], en: string[] = []
       for (const s of await Promise.all(sp.map(herdStatus))) {
+        if (!s.confirmed) {
+          ur.push(`${SPECIES_UR[s.species]}: کوئی تصدیق شدہ گنتی نہیں، اس لیے کل تعداد معلوم نہیں۔ درج شدہ تبدیلیاں +${s.additions} −${s.removals}۔`)
+          en.push(`${SPECIES_EN[s.species]}: no confirmed count, so the total is unknown. Recorded changes +${s.additions} −${s.removals}.`)
+          continue
+        }
         ur.push(`${SPECIES_UR[s.species]}: آخری تصدیق ${s.confirmed!.count} (${agoUr(s.confirmed!.confirmedAt)})۔` +
           (s.eventsSince.length ? ` اس کے بعد +${s.additions} −${s.removals}، اندازہ ${s.estimate}۔` : '') +
           (s.status === 'stale' ? ` ⚠️ ${s.daysSinceConfirmed} دن سے دوبارہ گنتی نہیں ہوئی۔` : ''))

@@ -104,7 +104,14 @@ main { flex: 1; }
 .herd-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center; }
 .herd-nums b { font-size: 2.6rem; display: block; line-height: 1.1; }
 .herd-nums .confirmed b { color: var(--trip); }
+.herd-nums > div { border-radius: 14px; padding: 6px 4px; }
+.herd-nums .confirmed { border: 2px solid var(--trip); }
+.herd-nums .confirmed.none { border: 2px dashed var(--warn-ink); }
+.herd-nums .confirmed.none b { color: var(--warn-ink); }
+.herd-nums .estimate { border: 2px dashed var(--line); }
 .herd-nums .estimate b { color: var(--muted); font-style: italic; }
+.herd-nums .estimate.quiet { display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.answer .confirm { margin-top: 8px; }
 .card.herd.stale .estimate b, .card.herd.stale .confirmed b { color: var(--warn-ink); }
 .herd-nums small { display: block; }
 .events { margin: 8px 0 0; padding: 0 16px; font-size: .78rem; color: var(--muted); }

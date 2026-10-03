@@ -3,6 +3,10 @@ import { now, DAY } from './clock'
 
 export const STALE_DAYS = 14
 export const SPECIES_UR: Record<Species, string> = { goat: 'بکریاں', sheep: 'بھیڑیں', camel: 'اونٹ', cattle: 'گائیں' }
+/** Oblique plural ("بکریوں کی گنتی") and singular ("1 بکری") — Urdu needs both. */
+export const SPECIES_UR_OBL: Record<Species, string> = { goat: 'بکریوں', sheep: 'بھیڑوں', camel: 'اونٹوں', cattle: 'گایوں' }
+export const SPECIES_UR_ONE: Record<Species, string> = { goat: 'بکری', sheep: 'بھیڑ', camel: 'اونٹ', cattle: 'گائے' }
+export const countUr = (n: number, s: Species) => `${n} ${n === 1 ? SPECIES_UR_ONE[s] : SPECIES_UR[s]}`
 export const SPECIES_EN: Record<Species, string> = { goat: 'Goats', sheep: 'Sheep', camel: 'Camels', cattle: 'Cattle' }
 
 export interface HerdStatus {
@@ -32,8 +36,9 @@ export async function herdStatus(species: Species): Promise<HerdStatus> {
   }
 }
 
+/** Species with a confirmed count OR any recorded change: a change without a baseline must still be visible. */
 export async function trackedSpecies(): Promise<Species[]> {
-  const s = new Set<Species>((await db.confirmations.toArray()).map(c => c.species))
+  const s = new Set<Species>([...(await db.confirmations.toArray()), ...(await db.herdEvents.toArray())].map(c => c.species))
   return (['goat', 'sheep', 'camel', 'cattle'] as Species[]).filter(x => s.has(x))
 }
 

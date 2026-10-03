@@ -109,10 +109,13 @@ export type Intent =
   | { kind: 'place_distance'; name: string }
   | { kind: 'reminder'; text: string; dueAt: number }
   | { kind: 'herd_confirm'; counts: { species: Species; count: number }[] }
-  | { kind: 'herd_event'; events: { species: Species; type: HerdEventType; qty: number }[] }
+  | { kind: 'herd_event'; events: HerdEventParse[] }
   | { kind: 'herd_status' }
   | { kind: 'reminders_list' }
   | { kind: 'unknown' }
+
+/** qtyAssumed: no number was said, so 1 was assumed. The read-back must say so. */
+export interface HerdEventParse { species: Species; type: HerdEventType; qty: number; qtyAssumed: boolean }
 
 const FUTURE = ['یاد دلا', 'یاد کرا', 'نا ہے', 'نی ہے', 'نے ہیں', 'yaad dila', 'yad dila', 'na hai', 'ni hai', 'ne hain', 'remind']
 
@@ -127,14 +130,14 @@ function eventType(text: string): HerdEventType | undefined {
 const DELTA_SIGN: Record<HerdEventType, number> = { birth: 1, purchase: 1, sale: -1, death: -1, loss: -1, slaughter: -1, other: 0 }
 export const signOf = (t: HerdEventType) => DELTA_SIGN[t]
 
-/** Species mentions with their quantity (number just before the noun, else 1). */
+/** Species mentions with their quantity (number just before the noun, else 1, flagged as assumed). */
 function speciesQty(toks: string[]) {
   const nums = parseNumbers(toks)
-  const res: { species: Species; qty: number; idx: number }[] = []
+  const res: { species: Species; qty: number; qtyAssumed: boolean; idx: number }[] = []
   toks.forEach((t, i) => {
     const s = SPEC[t]; if (!s) return
     const n = nums.find(n => n.end === i && !n.money)
-    res.push({ species: s, qty: n ? Math.round(n.value) : 1, idx: i })
+    res.push({ species: s, qty: n ? Math.round(n.value) : 1, qtyAssumed: !n, idx: i })
   })
   return res
 }
@@ -179,7 +182,7 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
   // 6. herd
   const sq = speciesQty(toks)
   const et = eventType(text)
-  if (et && sq.length) return { kind: 'herd_event', events: sq.map(s => ({ species: s.species, type: et, qty: s.qty })) }
+  if (et && sq.length) return { kind: 'herd_event', events: sq.map(s => ({ species: s.species, type: et, qty: s.qty, qtyAssumed: s.qtyAssumed })) }
   if (sq.length && !et && has(text, 'ہیں', 'hain', 'ہے', 'hai', 'کل ملا', 'ٹوٹل', 'total', 'گنتی', 'ginti')
       && !has(text, 'کتنی', 'کتنے', 'kitni', 'kitne', 'how many')) {
     const nums = parseNumbers(toks)
