@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getHome, setHome, PLACE_TAGS, placeIcon, type Species, type HerdEventType, type Rating, type Reminder, type PlaceType } from './db'
 import { now, shiftDays, clockOffsetDays } from './clock'
@@ -290,13 +290,23 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
   const [micErr, setMicErr] = useState<[string, string]>()
   /** Final text from the mic: shown for a moment so the herder sees what was heard, then sent. */
   const [heard, setHeard] = useState<string>()
+  const [kbHint, setKbHint] = useState(false)
+  const input = useRef<HTMLInputElement>(null)
+  /** Offline / unsupported: the phone keyboard's own mic (Gboard Urdu voice typing) fills the same box. */
+  const toKeyboardMic = () => { stopListening(); setKbHint(true); input.current?.focus() }
   useEffect(() => { if (!heard) return; const t = setTimeout(() => { ask(heard); setHeard(undefined) }, 900); return () => clearTimeout(t) }, [heard])
   useEffect(() => () => stopListening(), [])
   const show = (q: string, a: Answer) => { setCur({ q, a }); speak(a.ur); onMap?.(a.map); if (a.action) onAction(a.action) }
   const mic = () => {
     if (listening) { stopListening(); return }
-    setMicErr(undefined); setQ('')
-    if (listen(t => { setQ(t); setHeard(t) }, e => { setListening(false); if (e) setMicErr(LISTEN_ERROR[e]) }, t => setQ(t))) setListening(true)
+    setMicErr(undefined); setKbHint(false); setQ('')
+    // Browser recognition is online-only: without it, go straight to the keyboard mic (focus must happen in the tap).
+    if (!canListen() || !navigator.onLine) { toKeyboardMic(); return }
+    if (listen(t => { setQ(t); setHeard(t) }, e => {
+      setListening(false)
+      if (e === 'network' || e === 'insecure' || e === 'language-not-supported') toKeyboardMic()
+      else if (e) setMicErr(LISTEN_ERROR[e])
+    }, t => setQ(t))) setListening(true)
   }
   const ask = async (text: string) => { if (!text.trim()) return; const a = await answer(text); setQ(''); show(text, a) }
   const resolve = async (yes: boolean) => {
@@ -309,19 +319,20 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
   const lbl = CONFIRM_LABEL[cur?.a.pending?.kind ?? ''] ?? CONFIRM_LABEL.default
   return (
     <div className={big ? 'voice big' : 'voice'}>
-      {big && canListen() && (
+      {big && (
         <button className={listening ? 'bigmic on' : 'bigmic'} aria-label="Speak to CHOTA" onClick={mic}>
           <span>🎤</span><T ur={listening ? 'سن رہا ہوں…' : 'بولیں'} en={listening ? 'Listening… tap to stop' : 'Tap and speak'} />
         </button>)}
       <div className="askbar">
-        <input dir="auto" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && ask(q)}
+        <input ref={input} dir="auto" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && ask(q)}
           placeholder={big ? 'یا یہاں لکھیں…' : 'بولیں یا لکھیں…'} aria-label="Ask Chota" />
-        {!big && canListen() && <button className={listening ? 'mic on' : 'mic'} aria-label="Speak" onClick={mic}>🎤</button>}
+        {!big && <button className={listening ? 'mic on' : 'mic'} aria-label="Speak" onClick={mic}>🎤</button>}
         <button className="go" onClick={() => ask(q)} aria-label="Send">➤</button>
       </div>
       {listening && q && <p className="hint listening"><T ur="جو سنا وہ اوپر لکھا جا رہا ہے" en="What I hear is written above" /></p>}
       {heard && <p className="hint"><T ur="یہ سنا — جواب آ رہا ہے…" en="Got it — answering…" /></p>}
       {micErr && <div className="warn-line"><T ur={`🎤 ${micErr[0]}`} en={micErr[1]} /></div>}
+      {kbHint && !q && <div className="note-line kb-hint"><T ur="⌨️ کی بورڈ کے اوپر والے 🎤 کو دبا کر بولیں، پھر ➤ دبائیں" en="Tap the 🎤 on your keyboard and speak, then press ➤ (works offline if Urdu voice typing is downloaded)" /></div>}
       {cur && (
         <div className={`answer ${big ? '' : 'small'} ${cur.a.ok ? '' : 'muted'}`}>
           <div className="q" dir="auto">“{cur.q}”</div>
