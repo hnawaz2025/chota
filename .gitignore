@@ -11,3 +11,5 @@ feasibility/*.npz
 __pycache__/
 *.pyc
 .DS_Store
+# Claude Code agent worktrees
+.claude/
