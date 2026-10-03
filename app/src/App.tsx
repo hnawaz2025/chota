@@ -5,7 +5,7 @@ import { now, shiftDays, clockOffsetDays } from './clock'
 import { lastFix, onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, currentFixState, checkOpenTrip, resumeTrip, canHoldScreen, type Fix, type OpenTrip } from './gps'
 import { spanUr, spanEn, fixState } from './trail'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
-import { answer, commitPending, savePlace, agoUr, agoEn, dueUr, dueEn, type Answer, type MapFocus, type UiAction } from './answer'
+import { answer, commitPending, rejectPending, savePlace, agoUr, agoEn, dueUr, dueEn, type Answer, type MapFocus, type UiAction, type PendingWrite } from './answer'
 import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN, type HerdStatus } from './herd'
 import { signOf, placeTypeOf } from './nlu'
 import { checkReminders, requestNotifications } from './reminders'
@@ -311,6 +311,15 @@ const EXAMPLES: [string, string][] = [
   ['کتنی بکریاں ہیں؟', 'How many goats?'],
   ['میں یہاں پہلے آیا ہوں؟', 'Have I been here before?'],
 ]
+/** ✓ writes the read-back record, ✗ writes nothing. Shared by every place that can create a pending write. */
+function ConfirmRow({ p, onResult }: { p: PendingWrite; onResult: (a: Answer) => void }) {
+  const lbl = CONFIRM_LABEL[p.kind] ?? CONFIRM_LABEL.default
+  return (
+    <div className="rate confirm">
+      <button className="good" onClick={async () => onResult(await commitPending(p))}><I c="✓" /><T ur={lbl[0]} en={lbl[1]} /></button>
+      <button className="poor" onClick={() => onResult(rejectPending(p))}><I c="✗" /><T ur={lbl[2]} en={lbl[3]} /></button>
+    </div>)
+}
 const CONFIRM_LABEL: Record<string, [string, string, string, string]> = {
   end_trip: ['ہاں، ختم کریں', 'Yes, end it', 'نہیں، جاری رکھیں', 'No, keep going'],
   default: ['ہاں، درج کریں', 'Yes, save', 'نہیں، غلط ہے', 'No, wrong'],
@@ -350,14 +359,6 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
     }, t => setQ(t))) setListening(true)
   }
   const ask = async (text: string) => { if (!text.trim()) return; const a = await answer(text); setQ(''); show(text, a) }
-  const resolve = async (yes: boolean) => {
-    if (!cur?.a.pending) return
-    const a: Answer = yes ? await commitPending(cur.a.pending)
-      : cur.a.pending.kind === 'end_trip' ? { ur: 'ٹھیک ہے، سفر جاری ہے۔', en: 'OK, the trip continues.', ok: false, intent: cur.a.intent }
-      : { ur: 'ٹھیک ہے، کچھ درج نہیں کیا۔ دوبارہ بولیں یا ریوڑ کے صفحے پر خود درج کریں۔', en: 'OK, nothing was saved. Say it again, or enter it on the Herd screen.', ok: false, intent: cur.a.intent }
-    show(cur.q, a)
-  }
-  const lbl = CONFIRM_LABEL[cur?.a.pending?.kind ?? ''] ?? CONFIRM_LABEL.default
   const feat = cur ? FEATURE_OF[cur.a.intent] : undefined
   return (
     <div className={big ? 'voice big' : 'voice'}>
@@ -382,10 +383,7 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
           <T ur={cur.a.ur} en={cur.a.en} big={big} emph />
           {hasUrduVoice() && <button className="speak" onClick={() => speak(cur.a.ur)} aria-label="Speak again">🔊</button>}
           {!hasUrduVoice() && big && <p className="muted no-voice"><Lab ic="🔇" ur="اس فون پر اردو آواز نہیں، اس لیے جواب بولا نہیں گیا" en="No Urdu voice on this phone, so the answer isn't spoken aloud (see Settings)" /></p>}
-          {cur.a.pending && <div className="rate confirm">
-            <button className="good" onClick={() => resolve(true)}><I c="✓" /><T ur={lbl[0]} en={lbl[1]} /></button>
-            <button className="poor" onClick={() => resolve(false)}><I c="✗" /><T ur={lbl[2]} en={lbl[3]} /></button>
-          </div>}
+          {cur.a.pending && <ConfirmRow p={cur.a.pending} onResult={a => show(cur.q, a)} />}
         </div>
       )}
       {big && cur?.a.map && <MapView focus={cur.a.map} className="map short" />}
@@ -421,7 +419,7 @@ function Reminders() {
       </div>
       {listening && <p className="hint listening"><Lab ic="🔴" ur="سن رہا ہوں… کب اور کیا یاد دلانا ہے؟" en="Listening… what, and when?" /></p>}
       {micErr && <div className="warn-line"><Lab ic="🎤" ur={micErr[0]} en={micErr[1]} /></div>}
-      {msg && <div className="answer small f-rem"><T ur={msg.ur} en={msg.en} emph /></div>}
+      {msg && <div className="answer small f-rem"><T ur={msg.ur} en={msg.en} emph />{msg.pending && <ConfirmRow p={msg.pending} onResult={setMsg} />}</div>}
       {rs.length === 0 && <p className="muted note"><Lab ic="🔔" ur="کوئی یاد دہانی نہیں" en="No reminders" /></p>}
       {rs.map(r => (
         <div key={r.id} className={`card rem ${r.status} ${r.source}`}>

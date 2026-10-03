@@ -56,7 +56,14 @@ await home(); const h8d = await ask('Is mahine kitne trips kiye?'); step('8d', '
 await home(); const h8e = await ask('Pichli dafa junoob kab gaya tha?'); step('8e', 'south: ' + h8e); expect('8e', h8e.includes('ریکارڈ نہ ہوا ہو'), 'no record != never went')
 await home(); const h8c = await ask('پرانا چارہ کتنی دور ہے؟'); step('8c', 'place: ' + h8c); expect('8c', h8c.includes('میٹر'), 'place distance')
 // 10. Reminder
-await home(); const h10 = await ask('کل صبح ریوڑ کی گنتی کرنا یاد دلانا'); step(10, 'reminder: ' + h10); expect(10, h10.includes('کل صبح 8 بجے'), 'reminder tomorrow 8am')
+const nRem = () => p.evaluate(() => new Promise(r => { const q = indexedDB.open('chota'); q.onsuccess = () => { q.result.transaction('reminders').objectStore('reminders').count().onsuccess = e => r(e.target.result) } }))
+// R1. A rejected reminder read-back writes nothing.
+const r0 = await nRem(); const hr = await ask('پرسوں شام پانی بھرنا ہے'); step('R1', 'read-back: ' + hr)
+await click('نہیں، غلط ہے'); await p.waitForTimeout(400); expect('R1', hr.includes('میں نے سمجھا') && await nRem() === r0, 'rejected reminder not saved')
+// 10. Reminder: read back, saved on ✓
+const h10 = await ask('کل صبح ریوڑ کی گنتی کرنا یاد دلانا'); step(10, 'reminder read-back: ' + h10)
+expect(10, h10.includes('کل صبح 8 بجے') && await nRem() === r0, 'reminder tomorrow 8am read back, not yet saved')
+await click('ہاں، درج کریں'); await p.waitForTimeout(500); expect(10, await nRem() === r0 + 1, 'reminder saved after yes')
 // 11. Trigger: jump +1 day and reload (scheduler runs on start and every 15 s)
 await settings(); await click('+1 days'); await p.reload(); await p.waitForSelector('.modal', { timeout: 20000 })
 const h11 = await p.textContent('.modal'); step(11, 'fired: ' + h11); expect(11, h11.includes('ریوڑ کی گنتی'), 'reminder fired'); await shot('11-reminder-fired'); await p.getByText('ٹھیک ہے').first().click()
@@ -74,7 +81,7 @@ await click('ہاں، درج کریں'); await p.waitForTimeout(600); const h12d
 expect('12c', h12d.includes('تصدیق شدہ گنتی') && (await dump()).confirmations.length === nConf + 1, 'recount 46 written after yes')
 
 // N1. A reminder due while the app was closed is shown, but labelled late (not as if on time).
-await home(); await ask('2 ghante baad pani check karna yaad dilana')
+await home(); await ask('2 ghante baad pani check karna yaad dilana'); await click('ہاں، درج کریں'); await p.waitForTimeout(400)
 await settings(); await click('+1 days'); await p.reload(); await p.waitForTimeout(2500)
 let n1 = ''
 for (let i = 0; i < 5 && await p.locator('.modal').count(); i++) {   // several reminders may be queued

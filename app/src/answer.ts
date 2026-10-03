@@ -14,6 +14,7 @@ export type PendingWrite =
   | { kind: 'herd_event'; events: HerdEventParse[]; sourceText: string }
   | { kind: 'herd_confirm'; counts: { species: Species; count: number }[]; sourceText: string }
   | { kind: 'end_trip'; sourceText: string }
+  | { kind: 'reminder'; text: string; dueAt: number; placeId?: number; tag?: string; sourceText: string }
 /** Something the screen should do after the answer: open the trip screen, or ask for the grazing rating. */
 export type UiAction = { go: 'trip' } | { rate: number }
 export interface Answer { ur: string; en: string; map?: MapFocus; ok: boolean; intent: Intent['kind']; pending?: PendingWrite; action?: UiAction }
@@ -33,7 +34,19 @@ function readBack(p: Extract<PendingWrite, { kind: 'herd_event' | 'herd_confirm'
 }
 
 /** The herder confirmed the read-back: write it. */
+/** The herder said ✗: nothing is written. */
+export function rejectPending(p: PendingWrite): Answer {
+  const [ur, en] = p.kind === 'end_trip' ? ['ٹھیک ہے، سفر جاری ہے۔', 'OK, the trip continues.']
+    : p.kind === 'reminder' ? ['ٹھیک ہے، یاد دہانی نہیں لگائی۔ دوبارہ بولیں، دن اور وقت کے ساتھ۔', 'OK, no reminder was set. Say it again with the day and time.']
+    : ['ٹھیک ہے، کچھ درج نہیں کیا۔ دوبارہ بولیں یا ریوڑ کے صفحے پر خود درج کریں۔', 'OK, nothing was saved. Say it again, or enter it on the Herd screen.']
+  return { ur, en, ok: false, intent: p.kind }
+}
+
 export async function commitPending(p: PendingWrite): Promise<Answer> {
+  if (p.kind === 'reminder') {
+    await db.reminders.add({ text: p.text, dueAt: p.dueAt, status: 'pending', source: 'user', createdAt: now(), placeId: p.placeId, kind: p.tag })
+    return { ur: `یاد دہانی لگا دی: ${dueUr(p.dueAt)}۔`, en: `Reminder set for ${dueEn(p.dueAt)}.`, ok: true, intent: 'reminder' }
+  }
   if (p.kind === 'end_trip') {
     const id = await endTrip()
     return id ? { ur: 'سفر ختم اور محفوظ ہو گیا۔', en: 'Trip ended and saved.', ok: true, intent: 'end_trip', action: { rate: id } }
@@ -236,12 +249,13 @@ export async function answer(text: string): Promise<Answer> {
       return A(`${l.ur} آپ نے اسے ${agoUr(p.createdAt)} محفوظ کیا تھا۔`, `${l.en} Saved ${agoEn(p.createdAt)}.`, { placeIds: [p.id!] })
     }
     case 'reminder': {
+      // Read back day + time first: a misheard sentence must not quietly become a reminder.
       const place = places.find(p => intent.text.includes(p.name))
-      await db.reminders.add({ text: intent.text, dueAt: intent.dueAt, status: 'pending', source: 'user', createdAt: now(), placeId: place?.id,
-        kind: /گنتی|count|گن/.test(intent.text) ? 'herd_count' : undefined })
+      const pending: PendingWrite = { kind: 'reminder', text: intent.text, dueAt: intent.dueAt, placeId: place?.id, sourceText: text,
+        tag: /گنتی|count|گن/.test(intent.text) ? 'herd_count' : undefined }
       const as = intent.assumed ? ASSUMED_WHEN[intent.assumed] : undefined
-      return A(`یاد دہانی لگا دی: ${dueUr(intent.dueAt)}${as ? ` (${as[0]})` : ''} — "${intent.text}"`,
-        `Reminder set for ${dueEn(intent.dueAt)}${as ? ` (${as[1]})` : ''}: "${intent.text}"`)
+      return { ...A(`میں نے سمجھا: یاد دہانی ${dueUr(intent.dueAt)}${as ? ` (${as[0]})` : ''} — "${intent.text}"۔ کیا یہ درست ہے؟`,
+        `I understood: a reminder ${dueEn(intent.dueAt)}${as ? ` (${as[1]})` : ''}: "${intent.text}". Is that right?`), pending }
     }
     case 'herd_confirm':
     case 'herd_event': {

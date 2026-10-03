@@ -1,6 +1,6 @@
 # CHOTA — status
 
-_Last updated: 2026-10-03 · milestones 1–5 done · PWA is demo-ready (desktop-verified; not yet on a real phone)_
+_Last updated: 2026-10-03 · milestones 1–5 done + redesign merged · PWA is demo-ready (desktop-verified; not yet on a real phone)_
 
 **Product (locked):** an offline-first Urdu pastoral memory assistant for livestock herders around Nushki, Balochistan.
 **Principle:** CHOTA distinguishes *recorded* from *assumed*. It never treats missing records as truth.
@@ -99,6 +99,25 @@ _Last updated: 2026-10-03 · milestones 1–5 done · PWA is demo-ready (desktop
 - Tests: 42 intent cases + 7 tag cases + 8 trail tests. e2e adds P1 (naming pauses walk, tag saved) and
   V1 (voice start → voice end with confirm → rating). All pass, 0 console errors.
 
+## Later changes (2026-10-03, user feedback)
+- **Field UI redesign merged** (design agent; see `design/DESIGN.md` and the before/after shots in `design/screens/`):
+  - sunlight contrast (AAA on key text) and one icon + colour per feature
+  - honesty shown by shape: solid = recorded/confirmed, dashed = estimate/last known, dotted = not recorded
+  - large targets, and a full-width Start Trip tile
+- **Label spacing:**
+  - Urdu line-height 2.5 (Nastaliq glyphs were spilling out of their line)
+  - an 8px gap before every English subtitle
+  - icons in their own boxes; at least 10px inner padding
+  - `tests/layout.mjs` asserts no overlap or out-of-box text at 390/360 px, light and dark: **0 violations** (was 2026)
+- **Reminders:**
+  - spoken clock times are understood (6:00, چھ بجے, ساڑھے چھ, at 6, 6 pm)
+  - assumed AM/PM or time is stated
+  - **read back and saved only on ✓**
+- **Fix:** herd-count questions ("گنتی کتنی ہے", "کل گنتی") were being parsed as reminders.
+- **Urdu speech output:** says "no Urdu voice on this device" instead of silence. On Android, speaks via `ur-PK` even if the voice list is empty.
+- **Mic:** live transcript, failure reasons, falls back to the keyboard mic offline. Naming a place freezes the spot and pauses the demo walk.
+- **Deployment:** pushed to GitHub (`hnawaz2025/chota`) for Vercel (root directory `app`). Reviewer guide in `app/README.md`.
+
 ## Test results (final run, 2026-10-03)
 | Suite | Result |
 |---|---|
@@ -115,7 +134,7 @@ Failures hit and fixed along the way (all real bugs, not test noise):
 The only failure on the untouched baseline was "none": the old e2e had no assertions.
 
 ## Tests
-- `npm test`: 32/32 Urdu intent cases, plus 8 trail-gap unit tests.
+- `npm test`: 60/60 Urdu intent cases, 7 place-tag cases, plus 8 trail-gap unit tests. `tests/layout.mjs`: 0 violations.
 - `tests/e2e.mjs` (Playwright, production build, 390×844):
   - the 12 milestone steps
   - T1 forgotten trip, T2 gap drawn dotted, T3 stale real-GPS fix
