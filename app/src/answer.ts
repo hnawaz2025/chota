@@ -1,0 +1,169 @@
+/** Executes a parsed intent against the local DB and returns a templated Urdu + English answer. */
+import { db, getHome, type Place, type Trip } from './db'
+import { now, DAY } from './clock'
+import { parse, signOf, type Intent } from './nlu'
+import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr, pathLengthM } from './geo'
+import { lastFix, activeTrip } from './gps'
+import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_EN } from './herd'
+
+export interface MapFocus { tripIds?: number[]; placeIds?: number[]; homeLine?: boolean; wayBack?: boolean }
+export interface Answer { ur: string; en: string; map?: MapFocus; ok: boolean; intent: Intent['kind'] }
+
+const RATING_UR = { good: 'اچھا', okay: 'ٹھیک', poor: 'کمزور' } as const
+export const agoUr = (t: number) => { const d = Math.floor((now() - t) / DAY); return d <= 0 ? 'آج' : d === 1 ? 'کل' : `${d} دن پہلے` }
+export const agoEn = (t: number) => { const d = Math.floor((now() - t) / DAY); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago` }
+const durUr = (ms: number) => { const h = Math.floor(ms / 3600000), m = Math.round(ms % 3600000 / 60000); return h ? `${h} گھنٹے ${m} منٹ` : `${m} منٹ` }
+const durEn = (ms: number) => { const h = Math.floor(ms / 3600000), m = Math.round(ms % 3600000 / 60000); return h ? `${h} h ${m} min` : `${m} min` }
+export function dueUr(t: number) {
+  const d = new Date(t), today = new Date(now()); today.setHours(0, 0, 0, 0)
+  const days = Math.round((new Date(t).setHours(0, 0, 0, 0) - today.getTime()) / DAY)
+  const day = days === 0 ? 'آج' : days === 1 ? 'کل' : days === 2 ? 'پرسوں' : `${days} دن بعد`
+  const h = d.getHours(), part = h < 12 ? 'صبح' : h < 16 ? 'دوپہر' : h < 19 ? 'شام' : 'رات'
+  return `${day} ${part} ${h % 12 || 12} بجے`
+}
+export function dueEn(t: number) {
+  const d = new Date(t), today = new Date(now()); today.setHours(0, 0, 0, 0)
+  const days = Math.round((new Date(t).setHours(0, 0, 0, 0) - today.getTime()) / DAY)
+  const day = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`
+  return `${day} at ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+}
+
+const lastEnded = async () => (await db.trips.orderBy('startedAt').reverse().toArray()).filter(t => t.endedAt)
+
+async function placesOfTrip(t: Trip) { return db.places.filter(p => p.tripId === t.id).toArray() }
+
+async function homeLine() {
+  const home = await getHome(), f = lastFix()
+  if (!home) return { ur: 'گھر ابھی محفوظ نہیں ہے۔ سیٹنگز میں "یہ میرا گھر ہے" دبائیں۔', en: 'Home is not set yet. Set it in Settings.' }
+  if (!f) return { ur: 'ابھی GPS نہیں ملا۔ کھلی جگہ میں تھوڑا انتظار کریں۔', en: 'No GPS fix yet. Wait a moment in the open.' }
+  const d = distanceM(f, home), dir = compass(bearingDeg(f, home))
+  if (d < 150) return { ur: 'آپ گھر کے پاس ہیں۔', en: 'You are at home.' }
+  return { ur: `گھر سیدھی لائن میں ${fmtKmUr(d)} دور، ${DIR_UR[dir]} کی طرف ہے۔`, en: `Home is ${fmtKm(d)} away in a straight line, to the ${dir}.` }
+}
+
+export async function answer(text: string): Promise<Answer> {
+  const places = await db.places.toArray()
+  const intent = parse(text, now(), places.map(p => p.name))
+  const A = (ur: string, en: string, map?: MapFocus, ok = true): Answer => ({ ur, en, map, ok, intent: intent.kind })
+  const f = lastFix()
+
+  switch (intent.kind) {
+    case 'save_place': {
+      if (!f) return A('ابھی GPS نہیں ملا، جگہ محفوظ نہیں ہو سکی۔', 'No GPS fix yet; the place was not saved.', undefined, false)
+      const dup = places.find(p => p.name.trim() === intent.name)
+      const id = await db.places.add({ name: intent.name, type: intent.placeType, lat: f.lat, lon: f.lon, createdAt: now(), tripId: activeTrip() })
+      return A(`ٹھیک ہے، یہ جگہ "${intent.name}" کے نام سے یاد رکھ لی۔${dup ? ' (اس نام کی ایک اور جگہ بھی ہے)' : ''}`,
+        `Saved this spot as "${intent.name}".${dup ? ' (Another place has the same name.)' : ''}`, { placeIds: [id as number] })
+    }
+    case 'home_distance': { const h = await homeLine(); return A(h.ur, h.en, { homeLine: true }) }
+    case 'way_back': {
+      const tid = activeTrip() ?? (await lastEnded())[0]?.id
+      if (!tid) return A('ابھی کوئی سفر ریکارڈ نہیں ہوا۔', 'No trip recorded yet.', undefined, false)
+      const pts = await db.points.where('tripId').equals(tid).sortBy('t')
+      const h = await homeLine()
+      return A(`نقشے پر نارنجی لکیر آپ کا اپنا راستہ ہے (${fmtKmUr(pathLengthM(pts))})۔ یہ نیا راستہ نہیں، صرف وہی جس پر آپ چلے۔ ${h.ur}`,
+        `The orange line is the path you walked (${fmtKm(pathLengthM(pts))}). It is your own track, not a new route. ${h.en}`,
+        { tripIds: [tid], wayBack: true, homeLine: true })
+    }
+    case 'good_grazing': {
+      const good = (await lastEnded()).filter(t => t.rating === 'good')
+      const gp = places.filter(p => p.type === 'grazing')
+      if (!good.length && !gp.length) return A('ابھی تک آپ نے کسی سفر میں چارے کو "اچھا" نہیں بتایا۔', 'You have not rated any trip\'s grazing as good yet.', undefined, false)
+      if (!good.length) return A(`محفوظ چراگاہیں: ${gp.map(p => p.name).join('، ')}۔`, `Saved grazing places: ${gp.map(p => p.name).join(', ')}.`, { placeIds: gp.map(p => p.id!) })
+      const t = good[0], tp = await placesOfTrip(t)
+      const where = t.direction ? `${DIR_UR[t.direction as keyof typeof DIR_UR]}، گھر سے تقریباً ${fmtKmUr(t.furthestFromHomeM ?? 0)}` : ''
+      const whereEn = t.direction ? ` — ${t.direction}, about ${fmtKm(t.furthestFromHomeM ?? 0)} from home` : ''
+      return A(`پچھلی بار اچھا چارہ ${agoUr(t.startedAt)} ملا تھا — ${where}۔${tp.length ? ` اس سفر میں آپ نے "${tp.map(p => p.name).join('"، "')}" محفوظ کیا تھا۔` : ''} (یہ اُس دن کی آپ کی اپنی رائے ہے۔)` +
+        (good.length > 1 ? ` کل ${good.length} سفر اچھے بتائے گئے۔` : ''),
+        `Good grazing was last recorded ${agoEn(t.startedAt)}${whereEn}.${tp.length ? ` You saved "${tp.map(p => p.name).join('", "')}" on that trip.` : ''} (Your own rating from that day.)`,
+        { tripIds: good.slice(0, 3).map(x => x.id!), placeIds: [...tp, ...gp].map(p => p.id!) })
+    }
+    case 'last_trip_dir': {
+      const t = (await lastEnded()).find(t => t.direction === intent.dir)
+      if (!t) return A(`میرے ریکارڈ میں ${DIR_UR[intent.dir]} کی طرف کوئی سفر نہیں۔`, `No recorded trip to the ${intent.dir}.`, undefined, false)
+      return A(`آپ آخری بار ${agoUr(t.startedAt)} ${DIR_UR[intent.dir]} کی طرف گئے تھے، گھر سے ${fmtKmUr(t.furthestFromHomeM ?? 0)} تک۔${t.rating ? ` چارہ: ${RATING_UR[t.rating]}۔` : ''}`,
+        `Your last trip to the ${intent.dir} was ${agoEn(t.startedAt)}, up to ${fmtKm(t.furthestFromHomeM ?? 0)} from home.${t.rating ? ` Grazing: ${t.rating}.` : ''}`, { tripIds: [t.id!] })
+    }
+    case 'trips_this_month': {
+      const m0 = new Date(now()); m0.setDate(1); m0.setHours(0, 0, 0, 0)
+      const ts = (await lastEnded()).filter(t => t.startedAt >= m0.getTime())
+      const c = (r: string) => ts.filter(t => t.rating === r).length
+      return A(`اس مہینے ${ts.length} سفر ریکارڈ ہوئے — اچھا ${c('good')}، ٹھیک ${c('okay')}، کمزور ${c('poor')}۔`,
+        `${ts.length} trips recorded this month — good ${c('good')}, okay ${c('okay')}, poor ${c('poor')}.`, { tripIds: ts.map(t => t.id!) })
+    }
+    case 'last_trip_duration': {
+      const t = (await lastEnded())[0]
+      if (!t) return A('ابھی کوئی مکمل سفر نہیں۔', 'No completed trip yet.', undefined, false)
+      const ms = t.endedAt! - t.startedAt
+      return A(`پچھلا سفر (${agoUr(t.startedAt)}) ${durUr(ms)} کا تھا، ${fmtKmUr(t.distanceM ?? 0)} چلے۔`,
+        `Your last trip (${agoEn(t.startedAt)}) lasted ${durEn(ms)} and covered ${fmtKm(t.distanceM ?? 0)}.`, { tripIds: [t.id!] })
+    }
+    case 'been_here': {
+      if (!f) return A('ابھی GPS نہیں ملا۔', 'No GPS fix yet.', undefined, false)
+      const near = (await db.points.toArray()).filter(p => p.tripId !== activeTrip() && distanceM(p, f) < 300)
+      const byTrip = new Map<number, number>(); near.forEach(p => byTrip.set(p.tripId, Math.max(byTrip.get(p.tripId) ?? 0, p.t)))
+      const np = places.filter(p => distanceM(p, f) < 300)
+      if (!byTrip.size && !np.length) return A('میرے ریکارڈ میں آپ یہاں پہلے نہیں آئے۔ (صرف وہ سفر جو CHOTA نے ریکارڈ کیے۔)', 'In my records you have not been here before (only trips CHOTA recorded).', undefined)
+      const lastT = Math.max(...byTrip.values(), ...np.map(p => p.createdAt))
+      return A(`جی ہاں، آپ یہاں ${byTrip.size} بار آئے، آخری بار ${agoUr(lastT)}۔${np.length ? ` قریب محفوظ جگہ: "${np[0].name}"۔` : ''}`,
+        `Yes — ${byTrip.size} recorded visit(s), last ${agoEn(lastT)}.${np.length ? ` Nearby saved place: "${np[0].name}".` : ''}`,
+        { tripIds: [...byTrip.keys()], placeIds: np.map(p => p.id!) })
+    }
+    case 'place_distance': {
+      const p = places.filter(x => x.name === intent.name).at(-1) as Place
+      if (!f) return A('ابھی GPS نہیں ملا۔', 'No GPS fix yet.', undefined, false)
+      const d = distanceM(f, p), dir = compass(bearingDeg(f, p))
+      return A(`"${p.name}" سیدھی لائن میں ${fmtKmUr(d)} دور، ${DIR_UR[dir]} کی طرف ہے۔ آپ نے اسے ${agoUr(p.createdAt)} محفوظ کیا تھا۔`,
+        `"${p.name}" is ${fmtKm(d)} away in a straight line, to the ${dir}. Saved ${agoEn(p.createdAt)}.`, { placeIds: [p.id!] })
+    }
+    case 'reminder': {
+      const place = places.find(p => intent.text.includes(p.name))
+      await db.reminders.add({ text: intent.text, dueAt: intent.dueAt, status: 'pending', source: 'user', createdAt: now(), placeId: place?.id,
+        kind: /گنتی|count|گن/.test(intent.text) ? 'herd_count' : undefined })
+      return A(`یاد دہانی لگا دی: ${dueUr(intent.dueAt)} — "${intent.text}"`, `Reminder set for ${dueEn(intent.dueAt)}: "${intent.text}"`)
+    }
+    case 'herd_confirm': {
+      const ur: string[] = [], en: string[] = []
+      for (const c of intent.counts) {
+        const before = await herdStatus(c.species)
+        await confirmCount(c.species, c.count, 'reconcile')
+        const diff = before.estimate !== undefined ? c.count - before.estimate : undefined
+        ur.push(`${c.count} ${SPECIES_UR[c.species]} — آج کی تصدیق شدہ گنتی۔` + (diff ? ` پچھلا اندازہ ${before.estimate} تھا (فرق ${diff > 0 ? '+' : ''}${diff})۔ کیا کوئی پیدائش، خرید، فروخت یا نقصان درج ہونے سے رہ گیا؟` : ''))
+        en.push(`${c.count} ${SPECIES_EN[c.species].toLowerCase()} — confirmed today.` + (diff ? ` Previous estimate was ${before.estimate} (difference ${diff > 0 ? '+' : ''}${diff}). Was a birth, purchase, sale or loss not recorded?` : ''))
+      }
+      return A(ur.join(' '), en.join(' '))
+    }
+    case 'herd_event': {
+      const ur: string[] = [], en: string[] = []
+      const TYPE_UR = { birth: 'پیدائش', purchase: 'خرید', sale: 'فروخت', death: 'موت', loss: 'گم/چوری', slaughter: 'ذبح', other: '' }
+      for (const e of intent.events) {
+        await db.herdEvents.add({ species: e.species, delta: signOf(e.type) * e.qty, type: e.type, at: now(), sourceText: text, tripId: activeTrip() })
+        const s = await herdStatus(e.species)
+        ur.push(`درج کر لیا: ${e.qty} ${SPECIES_UR[e.species]} — ${TYPE_UR[e.type]}۔` + (s.estimate !== undefined ? ` اندازاً اب ${s.estimate} (تصدیق شدہ نہیں)۔` : ''))
+        en.push(`Recorded: ${e.qty} ${SPECIES_EN[e.species].toLowerCase()} — ${e.type}.` + (s.estimate !== undefined ? ` Estimated now ${s.estimate} (not confirmed).` : ''))
+      }
+      return A(ur.join(' '), en.join(' '))
+    }
+    case 'herd_status': {
+      const sp = await trackedSpecies()
+      if (!sp.length) return A('ابھی کوئی گنتی محفوظ نہیں۔ مثلاً کہیں: "میرے پاس 47 بکریاں ہیں"۔', 'No herd count yet. Say e.g. "I have 47 goats".', undefined, false)
+      const ur: string[] = [], en: string[] = []
+      for (const s of await Promise.all(sp.map(herdStatus))) {
+        ur.push(`${SPECIES_UR[s.species]}: آخری تصدیق ${s.confirmed!.count} (${agoUr(s.confirmed!.confirmedAt)})۔` +
+          (s.eventsSince.length ? ` اس کے بعد +${s.additions} −${s.removals}، اندازہ ${s.estimate}۔` : '') +
+          (s.status === 'stale' ? ` ⚠️ ${s.daysSinceConfirmed} دن سے دوبارہ گنتی نہیں ہوئی۔` : ''))
+        en.push(`${SPECIES_EN[s.species]}: last confirmed ${s.confirmed!.count} (${agoEn(s.confirmed!.confirmedAt)}).` +
+          (s.eventsSince.length ? ` Since then +${s.additions} −${s.removals}, estimate ${s.estimate}.` : '') +
+          (s.status === 'stale' ? ` ⚠️ Not recounted for ${s.daysSinceConfirmed} days.` : ''))
+      }
+      return A(ur.join(' '), en.join(' '))
+    }
+    case 'reminders_list': {
+      const rs = await db.reminders.where('status').equals('pending').sortBy('dueAt')
+      if (!rs.length) return A('کوئی یاد دہانی باقی نہیں۔', 'No pending reminders.')
+      return A(rs.map(r => `${dueUr(r.dueAt)}: ${r.text}`).join('۔ '), rs.map(r => `${dueEn(r.dueAt)}: ${r.text}`).join('. '))
+    }
+    default:
+      return A('معاف کیجیے، یہ بات سمجھ نہیں آئی۔ نیچے دی گئی مثالوں میں سے کوئی آزمائیں۔', 'Sorry, I did not understand. Try one of the examples below.', undefined, false)
+  }
+}

@@ -1,0 +1,42 @@
+{"id": "u01", "events": [{"type": "expense", "item_cat": "feed", "cause": "بھوسہ کھل دانہ چوکر چارہ"}, {"type": "count", "qty": 3, "amount_pkr": 21000, "day_offset": 0}], "latency_s": 0.78}
+{"id": "u02", "events": [{"type": "expense", "item_cat": "feed", "cause": "buy"}, {"type": "birth", "species": "goat", "qty": 1, "day_offset": -1}], "latency_s": 0.6}
+{"id": "u03", "events": [{"type": "expense", "item_cat": "feed", "cause": "death"}, {"type": "task", "item_cat": "feed", "cause": "vaccination"}], "latency_s": 0.66}
+{"id": "u04", "events": [{"type": "purchase", "species": "goat", "qty": 10, "amount_pkr": 18000, "credit": true, "day_offset": -1}], "latency_s": 0.54}
+{"id": "u05", "events": [{"type": "task", "item_cat": "medicine", "cause": "کیڑوں کی دوائی"}], "latency_s": 0.37}
+{"id": "u06", "events": [{"type": "count", "item_cat": "trip", "cause": "grazing trip"}], "latency_s": 0.42}
+{"id": "u07", "events": [{"type": "purchase", "species": "goat", "qty": 2, "amount_pkr": 22000, "credit": false, "day_offset": -2}], "latency_s": 0.52}
+{"id": "u08", "events": [{"type": "purchase", "species": "goat", "qty": 12000, "amount_pkr": 110000, "credit": false, "day_offset": -1}], "latency_s": 0.58}
+{"id": "u09", "events": [{"type": "task", "item_cat": "feed", "cause": "tax collection"}, {"type": "trip_start", "day_offset": 20, "item_cat": "trip"}], "latency_s": 0.67}
+{"id": "u10", "events": [{"type": "expense", "item_cat": "water", "cause": "buy"}, {"type": "purchase", "item_cat": "water", "cause": "buy"}], "latency_s": 0.6}
+{"id": "u11", "events": [{"type": "purchase", "species": "sheep", "qty": 1, "amount_pkr": null, "credit": false, "day_offset": -1}], "latency_s": 0.47}
+{"id": "u12", "events": [{"type": "expense", "item_cat": "medicine", "cause": "death"}, {"type": "treatment", "species": "goat", "qty": 1, "day_offset": -2}], "latency_s": 0.61}
+{"id": "u13", "events": [{"type": "trip_start", "day_offset": 3, "item_cat": "trip", "cause": "return in three days"}, {"type": "task", "item_cat": "trip", "cause": "traveling"}], "latency_s": 0.7}
+{"id": "u14", "events": [{"type": "task", "item_cat": "trip", "cause": "grazing trip"}], "latency_s": 0.38}
+{"id": "u15", "events": [{"type": "expense", "item_cat": "medicine", "cause": "vaccination"}, {"type": "task", "item_cat": "trip", "cause": "grazing trip"}], "latency_s": 0.63}
+{"id": "u16", "events": [{"type": "task", "item_cat": "trip", "cause": "عید"}, {"type": "task", "item_cat": "trip", "cause": "عید"}], "latency_s": 0.61}
+{"id": "u17", "events": [{"type": "expense", "item_cat": "feed", "cause": "ادھار"}], "latency_s": 0.37}
+{"id": "u18", "events": [{"type": "task", "item_cat": "feed", "cause": "بکری بیچی"}], "latency_s": 0.37}
+{"id": "u19", "events": [{"type": "count", "species": "goat", "qty": 5, "day_offset": 0}], "latency_s": 0.35}
+{"id": "u20", "events": [{"type": "purchase", "item_cat": "feed", "cause": "purchase"}], "latency_s": 0.38}
+{"id": "u21", "events": [{"type": "expense", "item_cat": "feed", "cause": "trip_start"}, {"type": "purchase", "species": "goat", "qty": 12000, "amount_pkr": 35000, "credit": false, "day_offset": 0}], "latency_s": 0.88}
+{"id": "u22", "events": [{"type": "purchase", "species": "goat", "qty": 1200000, "amount_pkr": 1500000, "credit": false, "day_offset": 0}], "latency_s": 0.61}
+{"id": "u23", "events": [{"type": "count", "item_cat": "deworming", "cause": "تین نہیں چار"}, {"type": "task", "item_cat": "deworming", "cause": "تین نہیں چار"}], "latency_s": 0.71}
+{"id": "u24", "events": [{"type": "treatment", "item_cat": "medicine", "cause": "dewan بی"}], "latency_s": 0.35}
+{"id": "u25", "events": [{"type": "trip_start", "item_cat": "trip", "cause": "morning"}], "latency_s": 0.37}
+{"id": "u26", "events": [{"type": "task", "item_cat": "trip", "cause": "chori"}, {"type": "task", "item_cat": "trip", "cause": "chori"}], "latency_s": 0.6}
+{"id": "u27", "events": [{"type": "expense", "item_cat": "medicine", "cause": "کیڑوں کی دوائی"}], "latency_s": 0.4}
+{"id": "u28", "events": [{"type": "purchase", "species": "cattle", "qty": 1, "amount_pkr": 10000, "credit": false, "day_offset": -1}, {"type": "death", "species": "sheep", "qty": 2, "day_offset": -1}], "latency_s": 0.79}
+{"id": "u29", "events": [{"type": "trip_start", "item_cat": "trip", "cause": "grazing trip"}], "latency_s": 0.39}
+{"id": "u30", "events": [{"type": "expense", "item_cat": "feed", "cause": "udhaar"}], "latency_s": 0.37}
+{"id": "u31", "events": [{"type": "expense", "item_cat": "feed", "cause": "buy"}, {"type": "purchase", "species": "goat", "qty": 1, "amount_pkr": 2000, "credit": false, "day_offset": -1}], "latency_s": 0.79}
+{"id": "u32", "events": [{"type": "count", "species": "goat", "qty": 38, "day_offset": -1}], "latency_s": 0.37}
+{"id": "u33", "events": [{"type": "expense", "item_cat": "medicine", "cause": "vaccination"}], "latency_s": 0.38}
+{"id": "u34", "events": [{"type": "expense", "item_cat": "medicine", "cause": "vaccination"}], "latency_s": 0.37}
+{"id": "u35", "events": [{"type": "expense", "item_cat": "feed", "cause": "water"}, {"type": "task", "item_cat": "water", "cause": "treatment"}], "latency_s": 0.6}
+{"id": "u36", "events": [{"type": "expense", "item_cat": "medicine", "cause": "treatment"}, {"type": "expense", "item_cat": "deworming", "cause": "treatment"}, {"type": "expense", "item_cat": "feed", "cause": "feed"}], "latency_s": 0.87}
+{"id": "u37", "events": [{"type": "count", "species": "goat", "qty": 150, "day_offset": -1}], "latency_s": 0.36}
+{"id": "u38", "events": [{"type": "expense", "item_cat": "water", "cause": "purchase"}], "latency_s": 0.37}
+{"id": "u39", "events": [{"type": "purchase", "species": "cattle", "qty": 1, "amount_pkr": null, "credit": false, "day_offset": -1}], "latency_s": 0.47}
+{"id": "u40", "events": [{"type": "purchase", "species": "sheep", "qty": 1800, "amount_pkr": 75000, "credit": false, "day_offset": -1}], "latency_s": 0.59}
+{"id": "u41", "events": [{"type": "task", "item_cat": "trip", "cause": "grazing trip"}], "latency_s": 0.37}
+{"id": "u42", "events": [{"type": "task", "item_cat": "vaccination", "cause": "treatment"}], "latency_s": 0.41}

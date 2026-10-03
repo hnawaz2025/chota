@@ -1,0 +1,74 @@
+{
+ "2019": {
+  "region_shift": -0.0057,
+  "zones_out": 0,
+  "pct": 0.0,
+  "clusters": 0,
+  "largest_cluster_km2": 0,
+  "rain_nov_mar": 191.6,
+  "max_rel": 0.009
+ },
+ "2020": {
+  "region_shift": 0.0162,
+  "zones_out": 55,
+  "pct": 14.9,
+  "clusters": 18,
+  "largest_cluster_km2": 208,
+  "rain_nov_mar": 159.9,
+  "max_rel": 0.048
+ },
+ "2021": {
+  "region_shift": -0.0036,
+  "zones_out": 0,
+  "pct": 0.0,
+  "clusters": 0,
+  "largest_cluster_km2": 0,
+  "rain_nov_mar": 67.5,
+  "max_rel": 0.007
+ },
+ "2022": {
+  "region_shift": -0.0027,
+  "zones_out": 6,
+  "pct": 1.6,
+  "clusters": 6,
+  "largest_cluster_km2": 16,
+  "rain_nov_mar": 114.5,
+  "max_rel": 0.012
+ },
+ "2023": {
+  "region_shift": -0.0041,
+  "zones_out": 4,
+  "pct": 1.1,
+  "clusters": 3,
+  "largest_cluster_km2": 32,
+  "rain_nov_mar": 98.1,
+  "max_rel": 0.025
+ },
+ "2024": {
+  "region_shift": 0.003,
+  "zones_out": 0,
+  "pct": 0.0,
+  "clusters": 0,
+  "largest_cluster_km2": 0,
+  "rain_nov_mar": 122.2,
+  "max_rel": 0.009
+ },
+ "2025": {
+  "region_shift": 0.0058,
+  "zones_out": 5,
+  "pct": 1.4,
+  "clusters": 1,
+  "largest_cluster_km2": 80,
+  "rain_nov_mar": 91.6,
+  "max_rel": 0.026
+ },
+ "2026": {
+  "region_shift": -0.0017,
+  "zones_out": 11,
+  "pct": 3.0,
+  "clusters": 4,
+  "largest_cluster_km2": 48,
+  "rain_nov_mar": 137.7,
+  "max_rel": 0.013
+ }
+}

@@ -1,0 +1,24 @@
+15:41:10 grid 1060x940; in-scope pixels 58% of box; outside Pakistan within 50 km: 19%
+15:41:29 composite mar 2019: 6 dates 2019-03-03..2019-03-31
+15:41:49 composite mar 2020: 6 dates 2020-03-02..2020-03-27
+15:42:05 composite mar 2021: 6 dates 2021-03-05..2021-03-30
+15:42:28 composite mar 2022: 6 dates 2022-03-02..2022-03-27
+15:42:59 composite mar 2023: 6 dates 2023-03-05..2023-03-25
+15:43:12 composite mar 2024: 6 dates 2024-03-04..2024-03-31
+15:43:29 composite mar 2025: 6 dates 2025-03-01..2025-03-31
+15:43:42 composite mar 2026: 6 dates 2026-03-04..2026-03-29
+15:43:44 mar: done
+15:43:58 composite dry 2019: 6 dates 2019-09-12..2019-09-29
+15:44:12 composite dry 2020: 6 dates 2020-09-11..2020-10-01
+15:44:30 composite dry 2021: 6 dates 2021-09-11..2021-09-28
+15:44:53 composite dry 2022: 6 dates 2022-09-11..2022-10-01
+15:45:22 composite dry 2023: 6 dates 2023-09-11..2023-10-01
+15:45:42 composite dry 2024: 6 dates 2024-09-10..2024-10-02
+15:46:03 composite dry 2025: 6 dates 2025-09-15..2025-09-30
+15:46:26 composite dry 2026: 6 dates 2026-09-10..2026-09-30
+15:46:28 dry: done
+15:46:38 chirps done
+/Users/hafsanawaz/chota/.venv/lib/python3.8/site-packages/numpy/lib/nanfunctions.py:1217: RuntimeWarning: All-NaN slice encountered
+  return function_base._ureduce(a, func=_nanmedian, keepdims=keepdims,
+/Users/hafsanawaz/chota/.venv/lib/python3.8/site-packages/numpy/lib/nanfunctions.py:1872: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,

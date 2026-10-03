@@ -1,0 +1,102 @@
+import { useEffect, useRef, useState } from 'react'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db, getHome, type TripPoint } from './db'
+import { onFix, activeTrip, type Fix } from './gps'
+import type { MapFocus } from './answer'
+
+const BASE = import.meta.env.BASE_URL
+const RATING_COLOR: Record<string, string> = { good: '#2e9e4f', okay: '#d9a21b', poor: '#c4442f' }
+const icon = (html: string, cls = 'pin') => L.divIcon({ html, className: cls, iconSize: [30, 30], iconAnchor: [15, 28] })
+
+let meta: { bounds: [[number, number], [number, number]]; date: string } | undefined
+const metaP = fetch(`${BASE}data/basemap.json`).then(r => r.json()).then(m => (meta = m))
+const villagesP = fetch(`${BASE}data/villages.json`).then(r => r.json()) as Promise<{ n: string; a: number; o: number }[]>
+const borderP = fetch(`${BASE}data/pakistan.geojson`).then(r => r.json())
+
+export function MapView({ focus, allTrips = false, className = 'map' }: { focus?: MapFocus; allTrips?: boolean; className?: string }) {
+  const el = useRef<HTMLDivElement>(null)
+  const map = useRef<L.Map | undefined>(undefined)
+  const data = useRef<L.LayerGroup | undefined>(undefined)
+  const me = useRef<L.CircleMarker | undefined>(undefined)
+  const [ready, setReady] = useState(false)
+  const [fix, setFix] = useState<Fix>()
+
+  const home = useLiveQuery(getHome)
+  const places = useLiveQuery(() => db.places.toArray())
+  const tid = activeTrip()
+  const live = useLiveQuery(() => tid ? db.points.where('tripId').equals(tid).sortBy('t') : Promise.resolve([] as TripPoint[]), [tid])
+  const tripIds = focus?.tripIds ?? []
+  const trips = useLiveQuery(async () => {
+    const ts = allTrips ? await db.trips.toArray() : await db.trips.bulkGet(tripIds)
+    return Promise.all(ts.filter(t => t && t.id !== tid).map(async t => ({ t: t!, pts: await db.points.where('tripId').equals(t!.id!).sortBy('t') })))
+  }, [allTrips, tripIds.join(','), tid])
+
+  useEffect(() => onFix(setFix), [])
+
+  // init once
+  useEffect(() => {
+    if (!el.current || map.current) return
+    const m = L.map(el.current, { zoomControl: false, attributionControl: true, minZoom: 9, maxZoom: 17 })
+    map.current = m
+    m.setView([29.5377, 65.9721], 12)
+    metaP.then(mm => {
+      L.imageOverlay(`${BASE}data/basemap.jpg`, mm.bounds, { attribution: `Sentinel-2 ${mm.date}` }).addTo(m).bringToBack()
+      m.setMaxBounds(L.latLngBounds(mm.bounds).pad(0.1))
+    })
+    borderP.then(gj => L.geoJSON(gj, { style: { color: '#b3261e', weight: 2, dashArray: '6 6', fill: false }, interactive: false }).addTo(m))
+    const vl = L.layerGroup()
+    villagesP.then(vs => vs.forEach(v => L.marker([v.a, v.o], { icon: L.divIcon({ className: 'village', html: v.n, iconSize: [0, 0] }), interactive: false }).addTo(vl)))
+    const syncVillages = () => (m.getZoom() >= 13 ? vl.addTo(m) : vl.remove())
+    m.on('zoomend', syncVillages); syncVillages()
+    data.current = L.layerGroup().addTo(m)
+    setReady(true)
+    return () => { m.remove(); map.current = undefined }
+  }, [])
+
+  // data layers
+  useEffect(() => {
+    const m = map.current, g = data.current
+    if (!ready || !m || !g) return
+    g.clearLayers()
+    const fitPts: L.LatLngExpression[] = []
+    for (const { t, pts } of trips ?? []) {
+      const ll = pts.map(p => [p.lat, p.lon] as [number, number])
+      L.polyline(ll, { color: RATING_COLOR[t.rating ?? ''] ?? '#5b6b7a', weight: 4, opacity: 0.85 }).addTo(g)
+      if (focus?.tripIds?.includes(t.id!)) fitPts.push(...ll)
+    }
+    if (live?.length) {
+      const ll = live.map(p => [p.lat, p.lon] as [number, number])
+      L.polyline(ll, { color: '#ff7a00', weight: focus?.wayBack ? 7 : 5 }).addTo(g)
+      if (focus?.wayBack) { fitPts.push(...ll); L.marker(ll[0], { icon: icon('🚩') }).addTo(g) }
+    }
+    if (home) {
+      L.marker([home.lat, home.lon], { icon: icon('🏠') }).addTo(g)
+      if (focus?.homeLine && fix) {
+        L.polyline([[fix.lat, fix.lon], [home.lat, home.lon]], { color: '#fff', weight: 2, dashArray: '4 8' }).addTo(g)
+        fitPts.push([home.lat, home.lon], [fix.lat, fix.lon])
+      }
+    }
+    for (const p of places ?? []) {
+      const hi = focus?.placeIds?.includes(p.id!)
+      L.marker([p.lat, p.lon], { icon: icon(`<span>${p.type === 'water' ? '💧' : p.type === 'home' ? '🏠' : '📍'}</span><b>${p.name}</b>`, hi ? 'pin place hi' : 'pin place') }).addTo(g)
+      if (hi) fitPts.push([p.lat, p.lon])
+    }
+    if (allTrips) (trips ?? []).forEach(({ pts }) => pts.forEach(p => fitPts.push([p.lat, p.lon])))
+    if (fitPts.length) m.fitBounds(L.latLngBounds(fitPts).pad(0.25), { maxZoom: 15 })
+    else if (fix) m.setView([fix.lat, fix.lon], Math.max(m.getZoom(), 13))
+  }, [ready, trips, live?.length, home, places, focus, allTrips])
+
+  // my position
+  useEffect(() => {
+    const m = map.current; if (!ready || !m || !fix) return
+    if (!me.current) me.current = L.circleMarker([fix.lat, fix.lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#1a73e8', fillOpacity: 1 }).addTo(m)
+    else me.current.setLatLng([fix.lat, fix.lon])
+    if (tid && !focus) m.panTo([fix.lat, fix.lon], { animate: true })
+  }, [ready, fix, tid, focus])
+
+  return <div ref={el} className={className} />
+}
+
+export const basemapMeta = () => meta

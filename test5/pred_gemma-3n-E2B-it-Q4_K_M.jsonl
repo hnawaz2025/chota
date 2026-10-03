@@ -1,0 +1,42 @@
+{"id": "u01", "events": [{"type": "sale", "species": "goat", "qty": 3, "amount_pkr": 45000, "credit": false, "day_offset": 0}], "latency_s": 1.13}
+{"id": "u02", "events": [{"type": "birth", "species": "goat", "qty": 2, "day_offset": -1}], "latency_s": 0.73}
+{"id": "u03", "events": [{"type": "death", "species": "sheep", "qty": 1, "day_offset": 0}], "latency_s": 0.77}
+{"id": "u04", "events": [{"type": "expense", "item_cat": "feed", "cause": "بھوسہ کھل دانہ چوکر چارہ (hay, grain, fodder) - assuming it's feed in general for this context, as the specific type isn't mentioned. Assuming it's hay/fodder as it's a common feed item.  If a specific type is needed, it should be specified in the input text.  For now, I'll use 'feed' as a general category.  If the input text had more detail, I could be more precise.  If no detail, I'll use 'feed' as a default.  If the input text had a specific item, I would use that instead.  If the input text is ambiguous, I'll use 'feed' as a default. ) , "}], "latency_s": 5.06}
+{"id": "u05", "events": [{"type": "treatment", "item_cat": "deworming", "cause": "all animals"}], "latency_s": 0.81}
+{"id": "u06", "events": [{"type": "count", "species": "goat", "qty": 42, "day_offset": -1}, {"type": "count", "species": "sheep", "qty": 17, "day_offset": -1}], "latency_s": 1.31}
+{"id": "u07", "events": [{"type": "sale", "species": "sheep", "qty": 2, "amount_pkr": 40000, "credit": false, "day_offset": -1}], "latency_s": 1.12}
+{"id": "u08", "events": [{"type": "purchase", "species": "goat", "qty": 1, "amount_pkr": 22000, "credit": false, "day_offset": -2}], "latency_s": 1.13}
+{"id": "u09", "events": [{"type": "task", "item_cat": "vaccination", "cause": "trip_start"}], "latency_s": 0.84}
+{"id": "u10", "events": [{"type": "expense", "item_cat": "water", "cause": "water tank/tanker (پانی ٹینکر) , amount_pkr: 3500, "}], "latency_s": 1.48}
+{"id": "u11", "events": [{"type": "loss", "species": "goat", "day_offset": 0}], "latency_s": 0.6}
+{"id": "u12", "events": [{"type": "death", "species": "sheep", "qty": 1, "day_offset": -2}, {"type": "treatment", "species": "goat", "day_offset": 0}], "latency_s": 1.15}
+{"id": "u13", "events": [{"type": "trip_start", "day_offset": 7}], "latency_s": 0.55}
+{"id": "u14", "events": [{"type": "trip_end", "day_offset": 0}], "latency_s": 0.52}
+{"id": "u15", "events": [{"type": "sale", "species": "camel", "amount_pkr": 150000, "credit": false, "day_offset": 0}], "latency_s": 1.01}
+{"id": "u16", "events": [{"type": "slaughter", "species": "sheep", "qty": 1, "day_offset": 0}], "latency_s": 0.75}
+{"id": "u17", "events": [{"type": "payment", "amount_pkr": 10000, "credit": true, "day_offset": 0}], "latency_s": 0.85}
+{"id": "u18", "events": [{"type": "sale", "species": "goat", "qty": 1, "amount_pkr": null, "credit": false, "day_offset": 0}], "latency_s": 1.01}
+{"id": "u19", "events": [{"type": "birth", "species": "sheep", "qty": 5, "day_offset": 0}], "latency_s": 0.72}
+{"id": "u20", "events": [{"type": "expense", "item_cat": "feed", "cause": "کھل اور دانہ لیا بارہ ہزار کا"}], "latency_s": 1.02}
+{"id": "u21", "events": [{"type": "sale", "species": "goat", "qty": 2, "amount_pkr": 30000, "credit": false, "day_offset": 0}, {"type": "purchase", "species": "goat", "qty": 1, "amount_pkr": 15000, "credit": true, "day_offset": 0}], "latency_s": 2.15}
+{"id": "u22", "events": [{"type": "purchase", "species": "cattle", "qty": 1, "amount_pkr": 210000, "credit": false, "day_offset": -1}], "latency_s": 1.14}
+{"id": "u23", "events": [{"type": "count", "species": "goat", "qty": 41, "day_offset": 0}], "latency_s": 0.74}
+{"id": "u24", "events": [{"type": "treatment", "item_cat": "vaccination", "cause": "medicine/injection/vaccine given"}], "latency_s": 0.95}
+{"id": "u25", "events": [{"type": "trip_start", "day_offset": -1}], "latency_s": 0.54}
+{"id": "u26", "events": [{"type": "loss", "species": "goat", "qty": 3, "day_offset": 0}], "latency_s": 0.72}
+{"id": "u27", "events": [], "latency_s": 9.27}
+{"id": "u28", "events": [{"type": "death", "species": "goat", "qty": 1, "day_offset": 0}, {"type": "death", "species": "sheep", "qty": 2, "day_offset": 0}], "latency_s": 1.26}
+{"id": "u29", "events": [{"type": "sale", "species": "goat", "qty": 2, "amount_pkr": 50000, "credit": false, "day_offset": 0}], "latency_s": 1.12}
+{"id": "u30", "events": [{"type": "expense", "item_cat": "feed", "cause": "بھوسہ کھل دانہ چوکر چارہ (feed) , amount_pkr: 6000, "}, {"type": "purchase", "species": "goat", "qty": 1, "amount_pkr": 6000, "credit": true, "day_offset": -1}], "latency_s": 2.24}
+{"id": "u31", "events": [{"type": "birth", "species": "goat", "qty": 1}], "latency_s": 0.59}
+{"id": "u32", "events": [{"type": "count", "species": "goat", "qty": 38, "day_offset": 0}, {"type": "count", "species": "sheep", "qty": 20, "day_offset": 0}], "latency_s": 1.29}
+{"id": "u33", "events": [{"type": "purchase", "species": "sheep", "qty": 1, "amount_pkr": 35000, "credit": false, "day_offset": 0}], "latency_s": 1.12}
+{"id": "u34", "events": [{"type": "task", "item_cat": "vaccination", "cause": "parson (past)"}], "latency_s": 0.79}
+{"id": "u35", "events": [{"type": "death", "species": "goat", "qty": 2, "day_offset": 0}], "latency_s": 0.72}
+{"id": "u36", "events": [{"type": "treatment", "item_cat": "medicine", "cause": "given to goat"}, {"type": "death", "species": "goat", "qty": 1, "day_offset": 0}], "latency_s": 1.33}
+{"id": "u37", "events": [{"type": "sale", "species": "sheep", "qty": 3, "amount_pkr": 150000, "credit": false}], "latency_s": 0.98}
+{"id": "u38", "events": [{"type": "expense", "item_cat": "water", "cause": "pani tanker (water tanker) - 4000 rupees.  No credit indicated, so amount_pkr is null.  day_offset: 0}]} ]}. 4000 is a single amount, so qty is 1.  No credit is indicated, so credit is false.  The day offset is 0 as it is a general expense.  The item_cat is water.  The amount_pkr is 4000.  The type is expense.  The cause is pani tanker.  So the JSON is: {"}], "latency_s": 4.09}
+{"id": "u39", "events": [{"type": "sale", "species": "goat", "qty": 1, "amount_pkr": null, "credit": false, "day_offset": -1}], "latency_s": 1.01}
+{"id": "u40", "events": [{"type": "expense", "item_cat": "feed", "cause": "choker (چوکر) for goats (بکریوں کے لیے چوکر) , amount_pkr: 4500, "}, {"type": "expense", "item_cat": "feed", "cause": "choker (چوکر) for goats (بکریوں کے لیے چوکر) , amount_pkr: 4500, "}], "latency_s": 2.68}
+{"id": "u41", "events": [{"type": "sale", "species": "goat", "qty": 4, "amount_pkr": null, "credit": false, "day_offset": 0}], "latency_s": 1.02}
+{"id": "u42", "events": [], "latency_s": 0.21}

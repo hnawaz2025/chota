@@ -1,0 +1,35 @@
+{
+ "mar": {
+  "region_shift": -0.0016820458695292473,
+  "T": 0.010908203758299349,
+  "n_valid": 368,
+  "n_hit": 3,
+  "fp_rate": 0.025262339681305868,
+  "moran": 0.7624554600332617,
+  "candidates": [
+   {
+    "direction": "southeast",
+    "direction_ur": "جنوب مشرق",
+    "distance_km": 16.8,
+    "near_landmark": "Kili Misri Khan",
+    "landmark_offset_km": 1.7,
+    "n_zones": 3,
+    "area_km2": 48,
+    "ndvi_vs_normal": 0.01,
+    "stands_out_by": 0.012,
+    "ndvi_now": 0.08,
+    "lat": 29.4179,
+    "lon": 66.0995
+   }
+  ]
+ },
+ "dry": {
+  "region_shift": -0.005431461147964001,
+  "T": 0.009448408847674727,
+  "n_valid": 368,
+  "n_hit": 0,
+  "fp_rate": 0.025232919254658384,
+  "moran": 0.665167822970967,
+  "candidates": []
+ }
+}

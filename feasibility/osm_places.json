@@ -1,0 +1,49 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-03T18:36:41Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 271909279,
+  "lat": 29.5500010,
+  "lon": 66.0166996,
+  "tags": {
+    "is_in": "Pakistan, Balochistan",
+    "name": "نوشکی",
+    "name:bal": "نوشکے",
+    "name:en": "Nushki",
+    "name:fa": "نوشکی",
+    "name:hi": "नौशकी",
+    "name:ja": "ヌシキ",
+    "name:ml": "നുഷ്കി",
+    "name:ps": "نوشکي",
+    "name:ru": "Нушки",
+    "name:sd": "نوشڪي",
+    "name:ur": "نوشکی",
+    "name:zh": "努什基",
+    "place": "town",
+    "postal_code": "95200"
+  }
+},
+{
+  "type": "node",
+  "id": 287772911,
+  "lat": 29.3955809,
+  "lon": 65.9405431,
+  "tags": {
+    "alt_name": "Ahmed Wal",
+    "is_in": "Balochistan",
+    "name": "احمد وال",
+    "name:en": "Ahmad Wal",
+    "name:ml": "അഹമ്മദ് വാൽ",
+    "place": "town"
+  }
+}
+
+  ]
+}

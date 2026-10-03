@@ -1,0 +1,13 @@
+# Large / regenerable artifacts (kept on disk, not in git)
+# llama.cpp binaries + GGUF models (5.7 GB)
+tools/
+# Sentinel-2 NDVI cache, regenerable via feasibility/t1b_anomaly.py
+feasibility/cache_1b/
+# GeoNames dump: download.geonames.org/export/dump/PK.zip
+feasibility/PK.zip
+feasibility/PK.txt
+feasibility/*.npz
+.venv/
+__pycache__/
+*.pyc
+.DS_Store

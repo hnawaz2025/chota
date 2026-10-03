@@ -1,0 +1,42 @@
+{"id": "u01", "events": [{"type": "sale", "species": "goat", "qty": 3, "amount_pkr": 45000, "credit": false, "day_offset": 0}], "latency_s": 0.76}
+{"id": "u02", "events": [{"type": "birth", "species": "goat", "qty": 2, "day_offset": 0}], "latency_s": 0.47}
+{"id": "u03", "events": [{"type": "death", "species": "sheep", "qty": 1, "day_offset": 0}], "latency_s": 0.47}
+{"id": "u04", "events": [{"type": "purchase", "item_cat": "feed", "cause": "buying feed for cattle and sheep (10 borsai), 18000 rupees on credit (ادھار) with day_offset 0"}], "latency_s": 1.02}
+{"id": "u05", "events": [{"type": "treatment", "item_cat": "deworming", "cause": "to prevent parasites"}, {"type": "task", "item_cat": "vaccination", "cause": "to prevent disease"}], "latency_s": 0.81}
+{"id": "u06", "events": [{"type": "count", "species": "goat", "qty": 42, "day_offset": 0}, {"type": "count", "species": "sheep", "qty": 17, "day_offset": 0}], "latency_s": 0.91}
+{"id": "u07", "events": [{"type": "sale", "species": "sheep", "qty": 2, "amount_pkr": 20000, "credit": false, "day_offset": 0}], "latency_s": 0.71}
+{"id": "u08", "events": [{"type": "purchase", "species": "goat", "qty": 1, "amount_pkr": 22000, "credit": false, "day_offset": -2}], "latency_s": 0.74}
+{"id": "u09", "events": [{"type": "task", "item_cat": "vaccination", "cause": "reminder"}, {"type": "task", "item_cat": "vaccination", "cause": "reminder"}], "latency_s": 0.81}
+{"id": "u10", "events": [{"type": "expense", "item_cat": "water", "cause": "water tank purchase', "}], "latency_s": 0.59}
+{"id": "u11", "events": [{"type": "purchase", "species": "goat", "qty": 1, "amount_pkr": null, "credit": false, "day_offset": 0}], "latency_s": 0.63}
+{"id": "u12", "events": [{"type": "death", "species": "sheep", "qty": 1, "day_offset": -1}, {"type": "treatment", "item_cat": "vaccination", "cause": "injection/shot"}, {"type": "task", "item_cat": "vaccination", "cause": "injection/shot"}], "latency_s": 1.28}
+{"id": "u13", "events": [{"type": "trip_start", "day_offset": 3}, {"type": "trip_end", "day_offset": -3}], "latency_s": 0.53}
+{"id": "u14", "events": [], "latency_s": 0.15}
+{"id": "u15", "events": [{"type": "sale", "species": "camel", "qty": 1, "amount_pkr": 150000, "credit": false, "day_offset": 0}], "latency_s": 0.7}
+{"id": "u16", "events": [{"type": "slaughter", "species": "sheep", "qty": 1, "day_offset": 0}], "latency_s": 0.48}
+{"id": "u17", "events": [], "latency_s": 5.83}
+{"id": "u18", "events": [{"type": "sale", "species": "goat", "qty": 1, "day_offset": 0}], "latency_s": 0.47}
+{"id": "u19", "events": [{"type": "birth", "species": "sheep", "qty": 5, "day_offset": 0}], "latency_s": 0.46}
+{"id": "u20", "events": [{"type": "expense", "item_cat": "feed", "cause": "کھل اور دانہ لیا 12000 کا"}, {"type": "expense", "item_cat": "feed", "cause": "کھل اور دانہ لیا 12000 کا"}], "latency_s": 1.29}
+{"id": "u21", "events": [{"type": "sale", "species": "goat", "qty": 2, "amount_pkr": 30000, "credit": false, "day_offset": 0}, {"type": "purchase", "species": "goat", "qty": 1, "amount_pkr": 15000, "credit": false, "day_offset": 0}], "latency_s": 1.32}
+{"id": "u22", "events": [{"type": "purchase", "species": "cattle", "qty": 1, "amount_pkr": 210000, "credit": false, "day_offset": 0}], "latency_s": 0.71}
+{"id": "u23", "events": [{"type": "count", "species": "goat", "qty": 41}], "latency_s": 0.38}
+{"id": "u24", "events": [{"type": "treatment", "item_cat": "vaccination", "cause": "illness of sheep', "}], "latency_s": 0.62}
+{"id": "u25", "events": [{"type": "trip_start", "day_offset": 0}, {"type": "task", "item_cat": "trip", "cause": "grazing trip"}, {"type": "task", "item_cat": "vaccination", "cause": "grazing trip"}], "latency_s": 0.97}
+{"id": "u26", "events": [{"type": "loss", "species": "goat", "qty": 3, "day_offset": 0}], "latency_s": 0.46}
+{"id": "u27", "events": [{"type": "task", "item_cat": "deworming", "cause": "20 days after', "}], "latency_s": 0.57}
+{"id": "u28", "events": [{"type": "death", "species": "goat", "qty": 1, "day_offset": 0}, {"type": "death", "species": "sheep", "qty": 2, "day_offset": 0}], "latency_s": 0.84}
+{"id": "u29", "events": [{"type": "sale", "species": "goat", "qty": 2, "amount_pkr": 50000, "credit": false, "day_offset": 0}], "latency_s": 0.7}
+{"id": "u30", "events": [{"type": "payment", "item_cat": "medicine", "cause": "udhaar (bought on credit), amount_pkr': 6000, "}], "latency_s": 0.82}
+{"id": "u31", "events": [{"type": "birth", "species": "goat", "qty": 1, "day_offset": 0}], "latency_s": 0.46}
+{"id": "u32", "events": [{"type": "count", "species": "goat", "qty": 38, "day_offset": 0}], "latency_s": 0.47}
+{"id": "u33", "events": [], "latency_s": 0.12}
+{"id": "u34", "events": [{"type": "task", "item_cat": "vaccination", "cause": "parson"}, {"type": "task", "item_cat": "vaccination", "cause": "parson"}], "latency_s": 0.79}
+{"id": "u35", "events": [{"type": "loss", "species": "goat", "qty": 2, "day_offset": 0}], "latency_s": 0.46}
+{"id": "u36", "events": [{"type": "treatment", "item_cat": "vaccination", "cause": "dawai li 1500 ki aur bakri ko di"}, {"type": "purchase", "species": "goat", "qty": 1, "amount_pkr": 1500, "credit": false, "day_offset": 0}], "latency_s": 1.22}
+{"id": "u37", "events": [{"type": "birth", "species": "sheep", "qty": 3, "amount_pkr": 100000, "day_offset": 0}], "latency_s": 0.64}
+{"id": "u38", "events": [], "latency_s": 0.12}
+{"id": "u39", "events": [{"type": "count", "species": "goat", "qty": 1}], "latency_s": 0.37}
+{"id": "u40", "events": [], "latency_s": 5.84}
+{"id": "u41", "events": [{"type": "sale", "species": "goat", "qty": 3, "day_offset": 0}], "latency_s": 0.47}
+{"id": "u42", "events": [], "latency_s": 0.12}
