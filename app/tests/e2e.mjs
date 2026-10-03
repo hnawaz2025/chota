@@ -1,59 +1,105 @@
-// Vertical-slice e2e: runs the 12 milestone steps against the production build in a phone viewport.
+// Vertical-slice e2e: the 12 milestone steps + Honest Trail checks, against the production build in a phone viewport.
+// Usage: npm run build && npx vite preview --port 4173 & node tests/e2e.mjs <screenshot dir>
+// Exits non-zero if any expectation fails or the page logs an error.
 import { chromium } from 'playwright'
-const OUT = process.argv[2], URL = 'http://localhost:4173/'
+const OUT = process.argv[2] ?? '.', URL = 'http://localhost:4173/'
 const b = await chromium.launch()
-const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'ur-PK' })
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'ur-PK',
+  permissions: ['geolocation'], geolocation: { latitude: 29.5600, longitude: 65.9400, accuracy: 12 } })
 const p = await ctx.newPage()
-const errors = []; p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && errors.push(m.text()))
+const errors = [], fails = []
+p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && errors.push(m.text()))
 const shot = async n => p.screenshot({ path: `${OUT}/${n}.png` })
-const step = (n, s) => console.log(`[${n}] ${s}`)
+const step = (n, s) => console.log(`[${n}] ${s.replace(/\s+/g, ' ').slice(0, 300)}`)
+const expect = (n, ok, what) => { if (!ok) { fails.push(`${n}: ${what}`); console.log(`  ✗ ${what}`) } }
 const click = async t => p.getByText(t, { exact: false }).first().click()
 const ask = async q => { await click('چھوٹا سے پوچھیں'); await p.fill('.askbar input', q); await p.press('.askbar input', 'Enter'); await p.waitForSelector('.answer'); await p.waitForTimeout(800); return (await p.textContent('.answer')).trim() }
-const home = async () => { if (await p.locator('header .back').count()) await p.locator('header button.back').click().catch(() => {}); await p.waitForTimeout(300) }
+const home = async () => { if (await p.locator('header button.back').count()) await p.locator('header button.back').click().catch(() => {}); await p.waitForTimeout(300) }
+/** Queued reminders pop up once trip prompts are resolved; snooze them so they don't block navigation. */
+const dismissReminders = async () => { for (let i = 0; i < 5 && await p.locator('.modal').count(); i++) { await p.getByText('بعد میں').first().click().catch(() => {}); await p.waitForTimeout(300) } }
+const settings = async () => { await dismissReminders(); await home(); await click('سیٹنگز') }
+const dump = () => p.evaluate(() => new Promise(r => { const q = indexedDB.open('chota'); q.onsuccess = () => { const tx = q.result.transaction(['trips', 'points', 'herdEvents', 'confirmations']); const out = {}; for (const s of ['trips', 'points', 'herdEvents', 'confirmations']) tx.objectStore(s).getAll().onsuccess = e => out[s] = e.target.result; tx.oncomplete = () => r(out) } }))
 
 await p.goto(URL); await p.evaluate(() => { localStorage.clear(); indexedDB.deleteDatabase('chota') }); await p.reload(); await p.waitForTimeout(2500)
 await shot('00-home-empty')
 // 1. Home
-await click('سیٹنگز'); await click('یہ جگہ میرا گھر ہے'); await p.waitForTimeout(500); step(1, 'home: ' + (await p.textContent('.card.set .muted')))
+await click('سیٹنگز'); await click('یہ جگہ میرا گھر ہے'); await p.waitForTimeout(500)
+const h1 = await p.textContent('.card.set .muted'); step(1, 'home: ' + h1); expect(1, /29\.5/.test(h1), 'home saved')
 await home()
 // 2. Herd count 47 goats
 await click('ریوڑ کی گنتی'); await click('نئی قسم شامل کریں'); await p.fill('input.num', '47'); await click('کی تصدیق'); await p.waitForTimeout(500)
-step(2, 'herd: ' + (await p.textContent('.card.herd')).replace(/\s+/g, ' ').slice(0, 120)); await shot('02-herd-confirmed'); await home()
+const h2 = await p.textContent('.card.herd'); step(2, 'herd: ' + h2); expect(2, h2.includes('47'), '47 confirmed'); await shot('02-herd-confirmed'); await home()
 // 3-4. Start trip, simulated walk
 await click('سفر شروع کریں'); await p.waitForTimeout(800); await p.getByText('200 m/s').click()
 for (let i = 0; i < 60; i++) { await p.waitForTimeout(1000); const t = await p.textContent('.sim'); if (+t.match(/(\d+)%/)[1] >= 50) break }
 await p.getByText('⏸').click().catch(() => {})
-step('3-4', 'trip stats: ' + (await p.textContent('.stats')).replace(/\s+/g, ' ')); await shot('03-trip-walking')
+const h3 = await p.textContent('.stats'); step('3-4', 'trip stats: ' + h3); expect('3-4', /[1-9]\.\d km/.test(h3), 'distance recorded'); await shot('03-trip-walking')
+expect('3-4', !(await p.locator('.warn-line.gps').count()), 'no GPS warning while simulated GPS is live')
 // 5. Save place
 await click('یہ جگہ یاد رکھو'); await p.fill('.modal input', 'پرانا چارہ'); await p.locator('.modal .big-btn').click(); await p.waitForTimeout(800)
-step(5, 'place: ' + (await p.textContent('.answer.small')).trim()); await shot('05-place-saved')
+const h5 = await p.textContent('.answer.small'); step(5, 'place: ' + h5); expect(5, h5.includes('یاد رکھ لی'), 'place saved'); await shot('05-place-saved')
 // 8-9 during trip: way back
-await click('واپسی کا راستہ'); await p.waitForTimeout(1500); step('8-9', 'way back: ' + (await p.textContent('.answer.small')).trim()); await shot('09-way-back')
+await click('واپسی کا راستہ'); await p.waitForTimeout(1500)
+const h9 = await p.textContent('.answer.small'); step('8-9', 'way back: ' + h9); expect('8-9', h9.includes('ریکارڈ شدہ راستہ') && !h9.includes('ریکارڈ نہیں ہوا'), 'way back, no gap caveat'); await shot('09-way-back')
 // 6. End trip + rating
 await click('سفر ختم کریں'); await p.waitForSelector('.modal'); await shot('06-rate'); await p.locator('.rate .good').click(); await p.waitForTimeout(500)
-const trip = await p.evaluate(() => new Promise(r => { const q = indexedDB.open('chota'); q.onsuccess = () => { const tx = q.result.transaction(['trips', 'points']); const out = {}; tx.objectStore('trips').getAll().onsuccess = e => out.trips = e.target.result; tx.objectStore('points').count().onsuccess = e => out.points = e.target.result; tx.oncomplete = () => r(out) } }))
-step(6, 'db: ' + JSON.stringify(trip))
+const d6 = await dump(); step(6, `db: trips=${JSON.stringify(d6.trips)} points=${d6.points.length}`)
+expect(6, d6.trips[0]?.endedAt && d6.trips[0].rating === 'good' && d6.trips[0].gapCount === 0, 'trip ended, rated, no gaps')
 // 7. Days later: ask about good grazing
-await click('سیٹنگز'); await click('+3 days'); await home()
-step(7, 'good grazing: ' + await ask('پچھلی بار اچھا چارہ کہاں ملا تھا؟')); await shot('07-good-grazing')
+await settings(); await click('+3 days'); await home()
+const h7 = await ask('پچھلی بار اچھا چارہ کہاں ملا تھا؟'); step(7, 'good grazing: ' + h7); expect(7, h7.includes('3 دن پہلے'), 'grazing 3 days ago'); await shot('07-good-grazing')
 // 8. Distance home (position is still at end of trip walk)
-await home(); step(8, 'home: ' + await ask('Ghar kitni door hai?')); await shot('08-home-distance')
-await home(); step('8b', 'been here: ' + await ask('Main is jagah pehle aya hoon?'))
-await home(); step('8c', 'place: ' + await ask('پرانا چارہ کتنی دور ہے؟'))
+await home(); const h8 = await ask('Ghar kitni door hai?'); step(8, 'home: ' + h8); expect(8, h8.includes('کلومیٹر') && !h8.includes('آخری GPS'), 'fresh home distance'); await shot('08-home-distance')
+await home(); const h8b = await ask('Main is jagah pehle aya hoon?'); step('8b', 'been here: ' + h8b); expect('8b', h8b.includes('1 بار'), 'one recorded visit')
+await home(); const h8c = await ask('پرانا چارہ کتنی دور ہے؟'); step('8c', 'place: ' + h8c); expect('8c', h8c.includes('میٹر'), 'place distance')
 // 10. Reminder
-await home(); step(10, 'reminder: ' + await ask('کل صبح ریوڑ کی گنتی کرنا یاد دلانا'))
+await home(); const h10 = await ask('کل صبح ریوڑ کی گنتی کرنا یاد دلانا'); step(10, 'reminder: ' + h10); expect(10, h10.includes('کل صبح 8 بجے'), 'reminder tomorrow 8am')
 // 11. Trigger: jump +1 day and reload (scheduler runs on start and every 15 s)
-await home(); await click('سیٹنگز'); await click('+1 days'); await p.reload(); await p.waitForSelector('.modal', { timeout: 20000 })
-step(11, 'fired: ' + (await p.textContent('.modal')).replace(/\s+/g, ' ')); await shot('11-reminder-fired'); await p.getByText('ٹھیک ہے').first().click()
+await settings(); await click('+1 days'); await p.reload(); await p.waitForSelector('.modal', { timeout: 20000 })
+const h11 = await p.textContent('.modal'); step(11, 'fired: ' + h11); expect(11, h11.includes('ریوڑ کی گنتی'), 'reminder fired'); await shot('11-reminder-fired'); await p.getByText('ٹھیک ہے').first().click()
 // 12. Stale herd: +14 days
-await click('سیٹنگز'); await click('+14 days'); await p.reload(); await p.waitForTimeout(2500)
-if (await p.locator('.modal').count()) { step('12a', 'proactive: ' + (await p.textContent('.modal')).replace(/\s+/g, ' ')); await shot('12a-proactive'); await p.getByText('بعد میں').first().click() }
+await settings(); await click('+14 days'); await p.reload(); await p.waitForTimeout(2500)
+if (await p.locator('.modal').count()) { step('12a', 'proactive: ' + await p.textContent('.modal')); await shot('12a-proactive'); await p.getByText('بعد میں').first().click() }
 await shot('12b-home-stale'); await click('ریوڑ کی گنتی'); await p.waitForTimeout(500)
-step(12, 'herd: ' + (await p.textContent('.card.herd')).replace(/\s+/g, ' ')); await shot('12-herd-stale')
+const h12 = await p.textContent('.card.herd'); step(12, 'herd: ' + h12); expect(12, h12.includes('18 دن'), 'stale warning'); await shot('12-herd-stale')
 // reconcile by voice-style text
-await home(); step('12c', 'reconcile: ' + await ask('Mere paas ab 46 bakriyan hain'))
+await home(); const h12c = await ask('Mere paas ab 46 bakriyan hain'); step('12c', 'reconcile: ' + h12c); expect('12c', h12c.includes('46'), 'recount 46')
 // offline check
 await ctx.setOffline(true); await p.reload(); await p.waitForTimeout(2500); await click('نقشہ و جگہیں'); await p.waitForTimeout(1500); await shot('13-offline-map')
-step('offline', 'map img loaded: ' + await p.evaluate(() => [...document.querySelectorAll('img.leaflet-image-layer')].some(i => i.complete && i.naturalWidth > 0)))
+const off = await p.evaluate(() => [...document.querySelectorAll('img.leaflet-image-layer')].some(i => i.complete && i.naturalWidth > 0))
+step('offline', 'map img loaded: ' + off); expect('offline', off, 'offline basemap')
+await ctx.setOffline(false)
+
+// ---------------- Honest Trail ----------------
+// T1. Forgotten trip: start, walk a bit, "come back" a day later. App must ask, and end it at the last recorded point.
+await home(); await click('سفر شروع کریں'); await p.waitForTimeout(800); await p.getByText('60 m/s').click(); await p.waitForTimeout(4000); await p.getByText('⏸').click().catch(() => {})
+await settings(); await click('+1 days'); await p.reload(); await p.waitForTimeout(2500)
+const t1 = (await p.locator('.modal').count()) ? await p.textContent('.modal') : ''
+step('T1', 'open-trip prompt: ' + t1); expect('T1', t1.includes('ابھی تک کھلا ہے'), 'forgotten-trip prompt shown'); await shot('T1-forgotten-trip')
+const before = await dump()
+await click('آخری ریکارڈ شدہ جگہ پر ختم کریں'); await p.waitForTimeout(800)
+if (await p.locator('.modal').count()) await click('چھوڑیں')
+const after = await dump(), ft = after.trips.at(-1), fpts = after.points.filter(x => x.tripId === ft.id)
+step('T1', `ended at ${ft.endedAt}, last point ${Math.max(...fpts.map(x => x.t))}, points before/after ${before.points.length}/${after.points.length}`)
+expect('T1', ft.endedAt === Math.max(...fpts.map(x => x.t)), 'trip ends at its last recorded point, not now')
+expect('T1', before.points.length === after.points.length, 'no new fixes appended to the forgotten trip')
+
+await p.waitForTimeout(500); await dismissReminders()
+// T2. Demo history includes a trip with a 50-min screen-off gap: listed as gap, drawn dotted, caveated.
+await settings(); await click('Load demo history'); await p.waitForTimeout(800); await home(); await click('پرانے سفر'); await p.waitForTimeout(500)
+const rows = await p.locator('.card.row.trip').allTextContents(); const gapRow = rows.findIndex(r => r.includes('gap'))
+step('T2', 'history: ' + rows.join(' | ')); expect('T2', gapRow >= 0, 'history shows a trip with a gap')
+if (gapRow >= 0) { await p.locator('.card.row.trip').nth(gapRow).click(); await p.waitForTimeout(1200) }
+const dotted = await p.locator('path[stroke-dasharray="1 9"]').count(); step('T2', `dotted gap paths: ${dotted}`); expect('T2', dotted >= 1, 'gap drawn dotted'); await shot('T2-gap-dotted')
+
+// T3. Real GPS, then the fix goes stale (clock +1 day without a new fix): answers say "last known", saving is refused.
+await settings(); await p.locator('label', { hasText: 'Demo GPS' }).locator('input').click(); await p.waitForTimeout(2000)
+await home(); const t3a = await ask('Ghar kitni door hai?'); step('T3', 'fresh: ' + t3a); expect('T3', t3a.includes('کلومیٹر') && !t3a.includes('آخری GPS'), 'fresh real-GPS answer')
+await settings(); await click('+1 days'); await home()
+const t3b = await ask('Ghar kitni door hai?'); step('T3', 'stale: ' + t3b); expect('T3', t3b.includes('آخری GPS') && t3b.includes('معلوم نہیں'), 'stale fix reported as last known')
+await home(); const t3c = await ask('Is jagah ko Test yaad rakho'); step('T3', 'save on stale: ' + t3c); expect('T3', t3c.includes('محفوظ نہیں کی'), 'refuses to save place from stale fix'); await shot('T3-stale')
+
 console.log('ERRORS:', errors.length ? errors : 'none')
+console.log(fails.length ? `FAILED ${fails.length}:\n  ${fails.join('\n  ')}` : 'ALL EXPECTATIONS PASS')
 await b.close()
+process.exitCode = fails.length || errors.length ? 1 : 0

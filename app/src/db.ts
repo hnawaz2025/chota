@@ -18,12 +18,14 @@ export interface HerdEvent {
 export interface Trip {
   id?: number; startedAt: number; endedAt?: number
   distanceM?: number; furthestFromHomeM?: number; direction?: string  // 8-way compass key from home
+  /** distanceM is recorded distance only; gaps are periods/jumps with no breadcrumbs (see trail.ts). */
+  gapCount?: number; gapMs?: number
   rating?: Rating | null
 }
 export interface TripPoint { id?: number; tripId: number; t: number; lat: number; lon: number; acc?: number }
 export interface Place {
   id?: number; name: string; type: PlaceType; lat: number; lon: number; createdAt: number
-  note?: string; tripId?: number
+  note?: string; tripId?: number; acc?: number
 }
 export interface Reminder {
   id?: number; text: string; dueAt: number; status: 'pending' | 'fired' | 'done' | 'dismissed'

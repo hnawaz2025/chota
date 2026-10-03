@@ -2,7 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getHome, setHome, type Species, type HerdEventType, type Rating, type Reminder } from './db'
 import { now, shiftDays, clockOffsetDays } from './clock'
-import { onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, type Fix } from './gps'
+import { onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, currentFixState, checkOpenTrip, resumeTrip, type Fix, type OpenTrip } from './gps'
+import { spanUr, spanEn } from './trail'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
 import { answer, agoUr, agoEn, dueUr, dueEn, type Answer } from './answer'
 import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_EN, type HerdStatus } from './herd'
@@ -29,7 +30,9 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>(activeTrip() ? 'trip' : 'home')
   const [fired, setFired] = useState<Reminder[]>([])
   const [rateTrip, setRateTrip] = useState<number>()
-  useEffect(() => { startPositioning() }, [])
+  const [openTrip, setOpenTrip] = useState<OpenTrip>()
+  // Check for a forgotten trip before any new fix can be appended to it.
+  useEffect(() => { checkOpenTrip().then(o => { setOpenTrip(o); startPositioning() }) }, [])
   useEffect(() => {
     const run = async () => { const due = await checkReminders(); if (due.length) { setFired(f => [...f, ...due]); speak(due[0].text) } }
     run(); const i = setInterval(run, 15000); return () => clearInterval(i)
@@ -49,8 +52,10 @@ export default function App() {
         {screen === 'history' && <History />}
         {screen === 'settings' && <Settings />}
       </main>
+      {openTrip && <ForgottenTrip o={openTrip} onDone={ended => { setOpenTrip(undefined); if (ended) { setRateTrip(ended); go('home') } else go('trip') }} />}
       {rateTrip && <RateTrip id={rateTrip} onDone={() => setRateTrip(undefined)} />}
-      {fired.length > 0 && <FiredReminder r={fired[0]} onClose={() => setFired(f => f.slice(1))} go={go} />}
+      {/* One modal at a time: resolving the open trip / rating comes first, reminders wait their turn. */}
+      {!openTrip && !rateTrip && fired.length > 0 && <FiredReminder r={fired[0]} onClose={() => setFired(f => f.slice(1))} go={go} />}
     </div>
   )
 }
@@ -80,10 +85,12 @@ function Home({ go }: { go: (s: Screen) => void }) {
   const stale = herd?.filter(h => h.status === 'stale') ?? []
   const tid = activeTrip()
   const hd = home && fix ? distanceM(fix, home) : undefined
+  const fs = currentFixState()
+  const lastKnown = fs.state === 'stale' ? { ur: ` (آخری GPS ${spanUr(fs.ageMs)} پہلے)`, en: ` (last GPS ${spanEn(fs.ageMs)} ago)` } : { ur: '', en: '' }
   return (
     <div className="home">
       <div className="strip">
-        {home ? (hd !== undefined && <T ur={`🏠 گھر ${fmtKmUr(hd)} · ${DIR_UR[compass(bearingDeg(fix!, home))]}`} en={`Home ${fmtKm(hd)} ${compass(bearingDeg(fix!, home))}`} />)
+        {home ? (hd !== undefined && <T ur={`🏠 گھر ${fmtKmUr(hd)} · ${DIR_UR[compass(bearingDeg(fix!, home))]}${lastKnown.ur}`} en={`Home ${fmtKm(hd)} ${compass(bearingDeg(fix!, home))}${lastKnown.en}`} />)
           : <button className="link" onClick={() => go('settings')}><T ur="🏠 پہلے اپنا گھر محفوظ کریں" en="Set your home first" /></button>}
       </div>
       {stale.map(s => (
@@ -123,12 +130,14 @@ function TripScreen({ go, onEnded }: { go: (s: Screen) => void; onEnded: (id: nu
   const hd = home && fix ? distanceM(fix, home) : undefined
   const mins = trip ? Math.floor((now() - trip.startedAt) / 60000) : 0
   const sim = simState()
+  const gaps = stats?.trail.gaps.length ?? 0
   return (
     <div className="trip-screen">
       <MapView focus={focus} />
+      <GpsBanner />
       <div className="stats">
         <div><b>{Math.floor(mins / 60)}:{String(mins % 60).padStart(2, '0')}</b><T ur="وقت" en="time" /></div>
-        <div><b>{fmtKm(stats?.distanceM ?? 0)}</b><T ur="چلے" en="walked" /></div>
+        <div><b>{fmtKm(stats?.distanceM ?? 0)}</b><T ur={gaps ? `ریکارڈ · ${gaps} وقفے` : 'ریکارڈ شدہ'} en={gaps ? `recorded · ${gaps} gap${gaps > 1 ? 's' : ''}` : 'recorded'} /></div>
         <div><b>{hd !== undefined ? fmtKm(hd) : '—'}</b><T ur={`گھر ${hd !== undefined ? DIR_UR[compass(bearingDeg(fix!, home!))] : ''}`} en="to home" /></div>
       </div>
       {msg && <div className="answer small"><T ur={msg.ur} en={msg.en} /></div>}
@@ -148,6 +157,33 @@ function TripScreen({ go, onEnded }: { go: (s: Screen) => void; onEnded: (id: nu
       )}
       {naming && <NamePlace onClose={a => { setNaming(false); if (a) { setMsg(a); setFocus(a.map); speak(a.ur) } }} />}
     </div>
+  )
+}
+
+/** While a trip is running: say plainly when the trail is NOT being recorded, and why. */
+function GpsBanner() {
+  const fix = useFix()
+  const fs = currentFixState()
+  if (fs.state === 'ok') return null
+  const [ur, en] = fs.state === 'none' ? ['GPS ابھی نہیں ملا — راستہ ریکارڈ نہیں ہو رہا', 'No GPS yet — the trail is not being recorded']
+    : fs.state === 'stale' ? [`آخری GPS ${spanUr(fs.ageMs)} پہلے — راستہ ریکارڈ نہیں ہو رہا`, `Last GPS ${spanEn(fs.ageMs)} ago — the trail is not being recorded`]
+    : [`GPS کمزور (±${Math.round(fix?.acc ?? 0)} میٹر) — یہ حصہ ریکارڈ نہیں ہو رہا`, `Weak GPS (±${Math.round(fix?.acc ?? 0)} m) — this part is not being recorded`]
+  return <div className="warn-line gps"><T ur={`⚠️ ${ur}`} en={en} /></div>
+}
+
+/** On launch: a trip left open from earlier. Never silently extend it to "now". */
+function ForgottenTrip({ o, onDone }: { o: OpenTrip; onDone: (endedId?: number) => void }) {
+  const last = o.lastPointT
+  return (
+    <Modal onClose={() => { /* must choose */ }}>
+      <span className="emoji">🐐</span>
+      <T ur={`ایک سفر ${agoUr(o.startedAt)} (${spanUr(now() - o.startedAt)} پہلے) شروع ہوا تھا اور ابھی تک کھلا ہے۔`} en={`A trip started ${spanEn(now() - o.startedAt)} ago is still open.`} big />
+      <T ur={last ? `آخری ریکارڈ شدہ جگہ ${spanUr(now() - last)} پہلے کی ہے۔ اس کے بعد کچھ ریکارڈ نہیں ہوا۔` : 'اس سفر میں کوئی جگہ ریکارڈ نہیں ہوئی۔'}
+        en={last ? `The last recorded point was ${spanEn(now() - last)} ago. Nothing was recorded after that.` : 'No point was recorded on this trip.'} />
+      <button className="big-btn end" onClick={async () => onDone(await endTrip(last ?? o.startedAt))}>⏹ <T ur="آخری ریکارڈ شدہ جگہ پر ختم کریں" en="End it at the last recorded point" /></button>
+      <button className="big-btn back" onClick={() => { resumeTrip(); onDone() }}>▶︎ <T ur="میں ابھی اسی سفر پر ہوں" en="I am still on this trip" /></button>
+      <p className="muted"><T ur="جاری رکھنے پر درمیان کا وقفہ ریکارڈ میں وقفہ ہی رہے گا۔" en="If you continue, the silence stays in the record as a gap." /></p>
+    </Modal>
   )
 }
 
@@ -171,8 +207,9 @@ function RateTrip({ id, onDone }: { id: number; onDone: () => void }) {
   return (
     <Modal onClose={() => rate(null)}>
       <T ur="سفر محفوظ ہو گیا" en="Trip saved" />
-      {t && <p className="muted"><T ur={`${fmtKmUr(t.distanceM ?? 0)} · گھر سے زیادہ سے زیادہ ${fmtKmUr(t.furthestFromHomeM ?? 0)}${t.direction ? ` · ${DIR_UR[t.direction as keyof typeof DIR_UR]}` : ''}`}
-        en={`${fmtKm(t.distanceM ?? 0)} · max ${fmtKm(t.furthestFromHomeM ?? 0)} from home${t.direction ? ` · ${t.direction}` : ''}`} /></p>}
+      {t && <p className="muted"><T ur={`${fmtKmUr(t.distanceM ?? 0)} ریکارڈ · گھر سے زیادہ سے زیادہ ${fmtKmUr(t.furthestFromHomeM ?? 0)}${t.direction ? ` · ${DIR_UR[t.direction as keyof typeof DIR_UR]}` : ''}`}
+        en={`${fmtKm(t.distanceM ?? 0)} recorded · max ${fmtKm(t.furthestFromHomeM ?? 0)} from home${t.direction ? ` · ${t.direction}` : ''}`} /></p>}
+      {t?.gapCount ? <p className="warn-line"><T ur={`⚠️ ${t.gapCount} حصے (${spanUr(t.gapMs ?? 0)}) ریکارڈ نہیں ہوئے`} en={`${t.gapCount} part(s) (${spanEn(t.gapMs ?? 0)}) were not recorded`} /></p> : null}
       <T ur="آج چارہ کیسا تھا؟" en="How was the grazing today?" big />
       <div className="rate">
         <button className="good" onClick={() => rate('good')}>🟢<T ur="اچھا" en="Good" big /></button>
@@ -356,7 +393,7 @@ function MapScreen() {
   return (
     <div>
       <MapView allTrips={!focus} focus={focus} className="map tall" />
-      <div className="legend"><span className="g">━ اچھا</span><span className="o">━ ٹھیک</span><span className="p">━ کمزور</span><span className="a">━ آج</span></div>
+      <div className="legend"><span className="g">━ اچھا</span><span className="o">━ ٹھیک</span><span className="p">━ کمزور</span><span className="a">━ آج</span><span>┄ ریکارڈ نہیں</span></div>
       <div className="pad">
         {places.map(p => (
           <button key={p.id} className="card row" onClick={() => setFocus({ placeIds: [p.id!] })}>
@@ -379,7 +416,7 @@ function History() {
         {trips.filter(t => t.endedAt).map(t => (
           <button key={t.id} className={`card row trip ${t.rating ?? ''} ${sel === t.id ? 'sel' : ''}`} onClick={() => setSel(t.id)}>
             <span><T ur={agoUr(t.startedAt)} en={new Date(t.startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} /></span>
-            <span>{fmtKm(t.distanceM ?? 0)} · {Math.round((t.endedAt! - t.startedAt) / 3600000 * 10) / 10} h · {t.direction ?? ''}</span>
+            <span>{fmtKm(t.distanceM ?? 0)} · {Math.round((t.endedAt! - t.startedAt) / 3600000 * 10) / 10} h · {t.direction ?? ''}{t.gapCount ? ` · ⚠️ ${t.gapCount} gap${t.gapCount > 1 ? 's' : ''}` : ''}</span>
             <span className={`chip ${t.rating ?? ''}`}>{t.rating ? { good: 'اچھا', okay: 'ٹھیک', poor: 'کمزور' }[t.rating] : '—'}</span>
           </button>
         ))}

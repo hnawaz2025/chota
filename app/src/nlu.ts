@@ -3,7 +3,7 @@
  * Benchmarked approach from feasibility Test 5 (rules beat 1-2B on-device LLMs, which also invented records).
  */
 import type { Species, HerdEventType } from './db'
-import { DIRS, DIR_UR, type Dir } from './geo'
+import { DIRS, DIR_UR, type Dir } from './geo.ts'
 
 // ---------- normalization ----------
 const CHARMAP: Record<string, string> = {

@@ -2,8 +2,9 @@
 import { db, getHome, type Place, type Trip } from './db'
 import { now, DAY } from './clock'
 import { parse, signOf, type Intent } from './nlu'
-import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr, pathLengthM } from './geo'
-import { lastFix, activeTrip } from './gps'
+import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
+import { lastFix, activeTrip, currentFixState } from './gps'
+import { splitTrail, spanUr, spanEn } from './trail'
 import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_EN } from './herd'
 
 export interface MapFocus { tripIds?: number[]; placeIds?: number[]; homeLine?: boolean; wayBack?: boolean }
@@ -32,13 +33,47 @@ const lastEnded = async () => (await db.trips.orderBy('startedAt').reverse().toA
 
 async function placesOfTrip(t: Trip) { return db.places.filter(p => p.tripId === t.id).toArray() }
 
+/** Caveat for a usable-but-uncertain fix. Stale fixes are handled by each caller as "last known", never "now". */
+function accNote() {
+  const f = lastFix(), { state } = currentFixState()
+  return state === 'poor' && f ? { ur: ` (GPS کمزور ہے، ±${Math.round(f.acc)} میٹر)`, en: ` (weak GPS, ±${Math.round(f.acc)} m)` } : { ur: '', en: '' }
+}
+const staleUr = (ms: number) => `آخری GPS ${spanUr(ms)} پہلے ملا تھا`
+const staleEn = (ms: number) => `Last GPS fix was ${spanEn(ms)} ago`
+
+/** Straight-line distance + direction from the current (or last known, clearly labelled) position to a target. */
+function lineTo(target: { lat: number; lon: number }, nameUr: string, nameEn: string) {
+  const f = lastFix()!, { state, ageMs } = currentFixState(), d = distanceM(f, target), dir = compass(bearingDeg(f, target))
+  if (state === 'stale') return {
+    ur: `${staleUr(ageMs)}۔ اُس جگہ سے ${nameUr} سیدھی لائن میں ${fmtKmUr(d)} دور، ${DIR_UR[dir]} کی طرف تھا۔ آپ ابھی کہاں ہیں، یہ معلوم نہیں۔`,
+    en: `${staleEn(ageMs)}. From there, ${nameEn} was ${fmtKm(d)} away to the ${dir}. Your current position is not known.`, d, stale: true }
+  const n = accNote()
+  return { ur: `${nameUr} سیدھی لائن میں ${fmtKmUr(d)} دور، ${DIR_UR[dir]} کی طرف ہے۔${n.ur}`, en: `${nameEn[0].toUpperCase()}${nameEn.slice(1)} is ${fmtKm(d)} away in a straight line, to the ${dir}.${n.en}`, d, stale: false }
+}
+
 async function homeLine() {
   const home = await getHome(), f = lastFix()
   if (!home) return { ur: 'گھر ابھی محفوظ نہیں ہے۔ سیٹنگز میں "یہ میرا گھر ہے" دبائیں۔', en: 'Home is not set yet. Set it in Settings.' }
   if (!f) return { ur: 'ابھی GPS نہیں ملا۔ کھلی جگہ میں تھوڑا انتظار کریں۔', en: 'No GPS fix yet. Wait a moment in the open.' }
-  const d = distanceM(f, home), dir = compass(bearingDeg(f, home))
-  if (d < 150) return { ur: 'آپ گھر کے پاس ہیں۔', en: 'You are at home.' }
-  return { ur: `گھر سیدھی لائن میں ${fmtKmUr(d)} دور، ${DIR_UR[dir]} کی طرف ہے۔`, en: `Home is ${fmtKm(d)} away in a straight line, to the ${dir}.` }
+  const l = lineTo(home, 'گھر', 'home')
+  if (!l.stale && l.d < 150 && currentFixState().state === 'ok') return { ur: 'آپ گھر کے پاس ہیں۔', en: 'You are at home.' }
+  return { ur: l.ur, en: l.en }
+}
+
+/** "Recorded" vs "not recorded" summary of a trip's breadcrumbs, for any answer that shows or measures a trail. */
+async function trailNote(tripId: number) {
+  const trip = await db.trips.get(tripId)
+  const pts = await db.points.where('tripId').equals(tripId).sortBy('t')
+  const tr = splitTrail(pts, trip?.startedAt, trip?.endedAt ?? now())
+  const live = !trip?.endedAt, tail = live ? tr.gaps.find(g => g.kind === 'tail') : undefined
+  const past = tr.gaps.filter(g => g !== tail), pastMs = past.reduce((s, g) => s + g.ms, 0)
+  let ur = '', en = ''
+  if (past.length) {
+    ur += ` ${past.length} حصوں میں (کل ${spanUr(pastMs)}) راستہ ریکارڈ نہیں ہوا؛ نقشے پر ٹوٹی لکیر صرف دونوں سرے جوڑتی ہے — وہاں آپ اصل میں کہاں سے گزرے، معلوم نہیں۔`
+    en += ` ${past.length} part(s) of the trail (${spanEn(pastMs)} in total) were not recorded; the dashed line only joins the ends — the actual path there is unknown.`
+  }
+  if (tail) { ur += ` پچھلے ${spanUr(tail.ms)} سے راستہ ریکارڈ نہیں ہو رہا۔`; en += ` Nothing has been recorded for the last ${spanEn(tail.ms)}.` }
+  return { tr, ur, en }
 }
 
 export async function answer(text: string): Promise<Answer> {
@@ -50,19 +85,22 @@ export async function answer(text: string): Promise<Answer> {
   switch (intent.kind) {
     case 'save_place': {
       if (!f) return A('ابھی GPS نہیں ملا، جگہ محفوظ نہیں ہو سکی۔', 'No GPS fix yet; the place was not saved.', undefined, false)
-      const dup = places.find(p => p.name.trim() === intent.name)
-      const id = await db.places.add({ name: intent.name, type: intent.placeType, lat: f.lat, lon: f.lon, createdAt: now(), tripId: activeTrip() })
-      return A(`ٹھیک ہے، یہ جگہ "${intent.name}" کے نام سے یاد رکھ لی۔${dup ? ' (اس نام کی ایک اور جگہ بھی ہے)' : ''}`,
-        `Saved this spot as "${intent.name}".${dup ? ' (Another place has the same name.)' : ''}`, { placeIds: [id as number] })
+      const fs = currentFixState()
+      if (fs.state === 'stale') return A(`${staleUr(fs.ageMs)}، اس لیے جگہ محفوظ نہیں کی — غلط جگہ یاد ہو جاتی۔ کھلی جگہ میں GPS کا انتظار کریں۔`,
+        `${staleEn(fs.ageMs)}, so the place was not saved — it would be stored at the wrong spot. Wait for GPS in the open.`, undefined, false)
+      const dup = places.find(p => p.name.trim() === intent.name), n = accNote()
+      const id = await db.places.add({ name: intent.name, type: intent.placeType, lat: f.lat, lon: f.lon, acc: f.acc, createdAt: now(), tripId: activeTrip() })
+      return A(`ٹھیک ہے، یہ جگہ "${intent.name}" کے نام سے یاد رکھ لی۔${dup ? ' (اس نام کی ایک اور جگہ بھی ہے)' : ''}${n.ur}`,
+        `Saved this spot as "${intent.name}".${dup ? ' (Another place has the same name.)' : ''}${n.en}`, { placeIds: [id as number] })
     }
     case 'home_distance': { const h = await homeLine(); return A(h.ur, h.en, { homeLine: true }) }
     case 'way_back': {
       const tid = activeTrip() ?? (await lastEnded())[0]?.id
       if (!tid) return A('ابھی کوئی سفر ریکارڈ نہیں ہوا۔', 'No trip recorded yet.', undefined, false)
-      const pts = await db.points.where('tripId').equals(tid).sortBy('t')
+      const t = await trailNote(tid)
       const h = await homeLine()
-      return A(`نقشے پر نارنجی لکیر آپ کا اپنا راستہ ہے (${fmtKmUr(pathLengthM(pts))})۔ یہ نیا راستہ نہیں، صرف وہی جس پر آپ چلے۔ ${h.ur}`,
-        `The orange line is the path you walked (${fmtKm(pathLengthM(pts))}). It is your own track, not a new route. ${h.en}`,
+      return A(`نقشے پر نارنجی لکیر آپ کا اپنا ریکارڈ شدہ راستہ ہے (${fmtKmUr(t.tr.recordedM)})۔ یہ نیا راستہ نہیں، صرف وہی جس پر آپ چلے۔${t.ur} ${h.ur}`,
+        `The orange line is the path you walked, as recorded (${fmtKm(t.tr.recordedM)}). It is your own track, not a new route.${t.en} ${h.en}`,
         { tripIds: [tid], wayBack: true, homeLine: true })
     }
     case 'good_grazing': {
@@ -94,12 +132,14 @@ export async function answer(text: string): Promise<Answer> {
     case 'last_trip_duration': {
       const t = (await lastEnded())[0]
       if (!t) return A('ابھی کوئی مکمل سفر نہیں۔', 'No completed trip yet.', undefined, false)
-      const ms = t.endedAt! - t.startedAt
-      return A(`پچھلا سفر (${agoUr(t.startedAt)}) ${durUr(ms)} کا تھا، ${fmtKmUr(t.distanceM ?? 0)} چلے۔`,
-        `Your last trip (${agoEn(t.startedAt)}) lasted ${durEn(ms)} and covered ${fmtKm(t.distanceM ?? 0)}.`, { tripIds: [t.id!] })
+      const ms = t.endedAt! - t.startedAt, n = await trailNote(t.id!)
+      return A(`پچھلا سفر (${agoUr(t.startedAt)}) ${durUr(ms)} کا تھا، ${fmtKmUr(n.tr.recordedM)} ریکارڈ ہوئے۔${n.ur}`,
+        `Your last trip (${agoEn(t.startedAt)}) lasted ${durEn(ms)}; ${fmtKm(n.tr.recordedM)} were recorded.${n.en}`, { tripIds: [t.id!] })
     }
     case 'been_here': {
       if (!f) return A('ابھی GPS نہیں ملا۔', 'No GPS fix yet.', undefined, false)
+      const fs = currentFixState()
+      if (fs.state === 'stale') return A(`${staleUr(fs.ageMs)}، اس لیے معلوم نہیں کہ آپ ابھی کہاں ہیں۔`, `${staleEn(fs.ageMs)}, so I do not know where "here" is right now.`, undefined, false)
       const near = (await db.points.toArray()).filter(p => p.tripId !== activeTrip() && distanceM(p, f) < 300)
       const byTrip = new Map<number, number>(); near.forEach(p => byTrip.set(p.tripId, Math.max(byTrip.get(p.tripId) ?? 0, p.t)))
       const np = places.filter(p => distanceM(p, f) < 300)
@@ -112,9 +152,8 @@ export async function answer(text: string): Promise<Answer> {
     case 'place_distance': {
       const p = places.filter(x => x.name === intent.name).at(-1) as Place
       if (!f) return A('ابھی GPS نہیں ملا۔', 'No GPS fix yet.', undefined, false)
-      const d = distanceM(f, p), dir = compass(bearingDeg(f, p))
-      return A(`"${p.name}" سیدھی لائن میں ${fmtKmUr(d)} دور، ${DIR_UR[dir]} کی طرف ہے۔ آپ نے اسے ${agoUr(p.createdAt)} محفوظ کیا تھا۔`,
-        `"${p.name}" is ${fmtKm(d)} away in a straight line, to the ${dir}. Saved ${agoEn(p.createdAt)}.`, { placeIds: [p.id!] })
+      const l = lineTo(p, `"${p.name}"`, `"${p.name}"`)
+      return A(`${l.ur} آپ نے اسے ${agoUr(p.createdAt)} محفوظ کیا تھا۔`, `${l.en} Saved ${agoEn(p.createdAt)}.`, { placeIds: [p.id!] })
     }
     case 'reminder': {
       const place = places.find(p => intent.text.includes(p.name))

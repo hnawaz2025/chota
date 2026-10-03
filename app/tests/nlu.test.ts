@@ -1,4 +1,4 @@
-import { parse } from '../src/nlu'
+import { parse } from '../src/nlu.ts'
 const NOW = new Date('2026-10-03T10:00:00').getTime()
 const places = ['Purana Chara', 'پرانا چارہ', 'ٹیوب ویل']
 const cases: [string, string, (i: any) => boolean][] = [
@@ -40,3 +40,4 @@ for (const [t, kind, check] of cases) {
   if (!ok) console.log('✗', t, '->', JSON.stringify(i))
 }
 console.log(`${pass}/${cases.length} intent cases pass`)
+process.exitCode = pass === cases.length ? 0 : 1

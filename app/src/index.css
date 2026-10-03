@@ -110,6 +110,7 @@ main { flex: 1; }
 .events { margin: 8px 0 0; padding: 0 16px; font-size: .78rem; color: var(--muted); }
 .events q { display: block; font-family: 'Noto Nastaliq Urdu', serif; }
 .warn-line { margin-top: 8px; background: var(--warn); color: var(--warn-ink); border-radius: 12px; padding: 4px 8px; text-align: center; }
+.warn-line.gps { margin: 0; border-radius: 0; }
 .note-line { margin-top: 6px; text-align: center; color: var(--muted); }
 .card.set { display: flex; flex-direction: column; gap: 8px; }
 .card.set label { font-size: .9rem; display: flex; gap: 8px; align-items: center; }

@@ -5,9 +5,20 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getHome, type TripPoint } from './db'
 import { onFix, activeTrip, type Fix } from './gps'
 import type { MapFocus } from './answer'
+import { now } from './clock'
+import { splitTrail, fixState, GAP_MS, type Pt } from './trail'
 
 const BASE = import.meta.env.BASE_URL
 const RATING_COLOR: Record<string, string> = { good: '#2e9e4f', okay: '#d9a21b', poor: '#c4442f' }
+/** Where nothing was recorded: a thin dotted connector between the recorded ends, never a solid "walked" line. */
+const gapStyle = (color: string): L.PolylineOptions => ({ color, weight: 2, dashArray: '1 9', lineCap: 'round', opacity: 0.95 })
+const ll = (p: { lat: number; lon: number }) => [p.lat, p.lon] as [number, number]
+function drawTrail(g: L.LayerGroup, pts: Pt[], startT: number, endT: number, color: string, weight: number) {
+  const tr = splitTrail(pts, startT, endT)
+  for (const seg of tr.segments) L.polyline(seg.map(ll), { color, weight, opacity: 0.85 }).addTo(g)
+  for (const gp of tr.gaps) if (gp.from && gp.to)
+    L.polyline([ll(gp.from), ll(gp.to)], gapStyle(color)).bindTooltip('ریکارڈ نہیں ہوا · not recorded').addTo(g)
+}
 const icon = (html: string, cls = 'pin') => L.divIcon({ html, className: cls, iconSize: [30, 30], iconAnchor: [15, 28] })
 
 let meta: { bounds: [[number, number], [number, number]]; date: string } | undefined
@@ -22,11 +33,14 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
   const me = useRef<L.CircleMarker | undefined>(undefined)
   const [ready, setReady] = useState(false)
   const [fix, setFix] = useState<Fix>()
+  const [tick, setTick] = useState(0)
+  useEffect(() => { const i = setInterval(() => setTick(x => x + 1), 10000); return () => clearInterval(i) }, [])
 
   const home = useLiveQuery(getHome)
   const places = useLiveQuery(() => db.places.toArray())
   const tid = activeTrip()
   const live = useLiveQuery(() => tid ? db.points.where('tripId').equals(tid).sortBy('t') : Promise.resolve([] as TripPoint[]), [tid])
+  const liveTrip = useLiveQuery(() => tid ? db.trips.get(tid) : undefined, [tid])
   const tripIds = focus?.tripIds ?? []
   const trips = useLiveQuery(async () => {
     const ts = allTrips ? await db.trips.toArray() : await db.trips.bulkGet(tripIds)
@@ -62,14 +76,16 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
     g.clearLayers()
     const fitPts: L.LatLngExpression[] = []
     for (const { t, pts } of trips ?? []) {
-      const ll = pts.map(p => [p.lat, p.lon] as [number, number])
-      L.polyline(ll, { color: RATING_COLOR[t.rating ?? ''] ?? '#5b6b7a', weight: 4, opacity: 0.85 }).addTo(g)
-      if (focus?.tripIds?.includes(t.id!)) fitPts.push(...ll)
+      drawTrail(g, pts, t.startedAt, t.endedAt ?? now(), RATING_COLOR[t.rating ?? ''] ?? '#5b6b7a', 4)
+      if (focus?.tripIds?.includes(t.id!)) fitPts.push(...pts.map(ll))
     }
-    if (live?.length) {
-      const ll = live.map(p => [p.lat, p.lon] as [number, number])
-      L.polyline(ll, { color: '#ff7a00', weight: focus?.wayBack ? 7 : 5 }).addTo(g)
-      if (focus?.wayBack) { fitPts.push(...ll); L.marker(ll[0], { icon: icon('🚩') }).addTo(g) }
+    if (live?.length && liveTrip) {
+      drawTrail(g, live, liveTrip.startedAt, now(), '#ff7a00', focus?.wayBack ? 7 : 5)
+      const lastPt = live[live.length - 1]
+      // Still unrecorded since the last breadcrumb, but we know where we are now: dotted, not solid.
+      if (fix && fixState(fix, now()).state !== 'stale' && fix.t - lastPt.t > GAP_MS)
+        L.polyline([ll(lastPt), ll(fix)], gapStyle('#ff7a00')).addTo(g)
+      if (focus?.wayBack) { fitPts.push(...live.map(ll)); L.marker(ll(live[0]), { icon: icon('🚩') }).addTo(g) }
     }
     if (home) {
       L.marker([home.lat, home.lon], { icon: icon('🏠') }).addTo(g)
@@ -86,15 +102,17 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
     if (allTrips) (trips ?? []).forEach(({ pts }) => pts.forEach(p => fitPts.push([p.lat, p.lon])))
     if (fitPts.length) m.fitBounds(L.latLngBounds(fitPts).pad(0.25), { maxZoom: 15 })
     else if (fix) m.setView([fix.lat, fix.lon], Math.max(m.getZoom(), 13))
-  }, [ready, trips, live?.length, home, places, focus, allTrips])
+  }, [ready, trips, live?.length, liveTrip, home, places, focus, allTrips])
 
   // my position
   useEffect(() => {
     const m = map.current; if (!ready || !m || !fix) return
-    if (!me.current) me.current = L.circleMarker([fix.lat, fix.lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#1a73e8', fillOpacity: 1 }).addTo(m)
+    if (!me.current) me.current = L.circleMarker([fix.lat, fix.lon], { radius: 8, color: '#fff', weight: 3, fillOpacity: 1 }).addTo(m)
     else me.current.setLatLng([fix.lat, fix.lon])
+    // Grey = last known position, not current.
+    me.current.setStyle({ fillColor: fixState(fix, now()).state === 'stale' ? '#9e9e9e' : '#1a73e8' })
     if (tid && !focus) m.panTo([fix.lat, fix.lon], { animate: true })
-  }, [ready, fix, tid, focus])
+  }, [ready, fix, tid, focus, tick])
 
   return <div ref={el} className={className} />
 }
