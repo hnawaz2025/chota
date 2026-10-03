@@ -33,6 +33,14 @@ const cases: [string, string, (i: any) => boolean][] = [
   ['bakri mar gayi', 'herd_event', i => i.events[0].qty === 1 && i.events[0].qtyAssumed],
   ['dawai li aur bakri ko di', 'unknown', () => true],   // Test 5: an LLM turned this into a death
   ['kitni bakriyan hain?', 'herd_status', () => true],
+  ['میرے ریوڑ کی گنتی کتنی ہے', 'herd_status', () => true],       // was a reminder ("نی ہے")
+  ['میرے ریوڑ کی کل گنتی کتنی ہے', 'herd_status', () => true],    // was a reminder for tomorrow ("کل" = total)
+  ['ریوڑ کتنا ہے', 'herd_status', () => true],
+  ['mere rewar ki ginti kitni hai', 'herd_status', () => true],
+  ['meri kul bakriyan kitni hain', 'herd_status', () => true],
+  ['میرے ریوڑ کی گنتی کیا ہے', 'herd_status', () => true],
+  ['کل گنتی کرنی ہے', 'reminder', (i: any) => new Date(i.dueAt).getDate() === 4],
+  ['کیا کل گنتی کرنا یاد دلا سکتے ہو؟', 'reminder', () => true],
   ['السلام علیکم', 'unknown', () => true],
   ['سفر شروع کرو', 'start_trip', () => true],
   ['chalo trip shuru karein', 'start_trip', () => true],

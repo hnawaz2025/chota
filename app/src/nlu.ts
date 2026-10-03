@@ -191,7 +191,14 @@ const END_WORDS = ['ختم', 'بند', 'روک', 'khatam', 'band', 'rok', 'end',
 /** A time or "remind" word means this is about later (a reminder), not "do it now". */
 const LATER_WORDS = ['یاد', 'yaad', 'yad', 'remind', 'کل', 'kal', 'پرسوں', 'parson', 'بعد', 'baad', 'صبح', 'subah', 'شام', 'shaam', 'tomorrow']
 
-const FUTURE = ['یاد دلا', 'یاد کرا', 'نا ہے', 'نی ہے', 'نے ہیں', 'yaad dila', 'yad dila', 'na hai', 'ni hai', 'ne hain', 'remind']
+/** Explicit "remind me": always a reminder, even if phrased as a question. */
+const REMIND = ['یاد دلا', 'یاد کرا', 'yaad dila', 'yad dila', 'remind']
+/** A question is asking about records, not setting a reminder ("کتنی ہے" is not "کرنی ہے"). */
+const QUESTION = ['کتنی', 'کتنا', 'کتنے', 'کیا', 'کہاں', 'کب', 'کیسے', 'کون', 'kitni', 'kitna', 'kitne', 'kya', 'kahan', 'kab', 'kaise', 'kaun', 'how', 'what', 'where', 'when']
+/** "جانا ہے" / "karni hai": an infinitive + hai = something to do later. Matched per word, never on a question word. */
+function isTodo(toks: string[]) {
+  return toks.some((t, i) => ['ہے', 'ہیں', 'hai', 'hain'].includes(toks[i + 1]) && !QUESTION.includes(t) && /(نا|نی|نے|na|ni|ne|naa)$/.test(t) && t.length > 2)
+}
 
 function eventType(text: string): HerdEventType | undefined {
   if (has(text, 'چوری', 'بھیڑیا', 'گم ہو', 'کھو گ', 'chori', 'gum ho', 'bheriya')) return 'loss'
@@ -239,7 +246,8 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
     if (has(text, ...TRIP_WORDS) && has(text, ...END_WORDS) || has(text, 'واپس آ گیا', 'گھر پہنچ گیا', 'wapas aa gaya', 'ghar pohanch gaya', 'ghar pahunch gaya')) return { kind: 'end_trip' }
   }
   // 3. reminders (future tense / "yaad dilana")
-  if (has(text, ...FUTURE) || has(text, 'check karna', 'dekhna', 'دیکھنا', 'چیک کرنا')) {
+  const question = QUESTION.some(w => toks.includes(w)) || /[?؟]/.test(raw)
+  if (has(text, ...REMIND) || (!question && (isTodo(toks) || has(text, 'check karna', 'dekhna', 'دیکھنا', 'چیک کرنا')))) {
     if (!has(text, 'دکھاؤ', 'dikhao')) { const w = parseWhen(text, toks, nowMs); return { kind: 'reminder', text: raw.trim(), dueAt: w.at, assumed: w.assumed } }
   }
   // 3. home
