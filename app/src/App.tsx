@@ -242,10 +242,16 @@ function Ask() {
   const [log, setLog] = useState<{ q: string; a: Answer }[]>([])
   const [listening, setListening] = useState(false)
   const [micErr, setMicErr] = useState<[string, string]>()
+  /** Final text from the mic: shown in the box for a moment so the herder sees what was heard, then sent. */
+  const [heard, setHeard] = useState<string>()
+  useEffect(() => { if (!heard) return; const t = setTimeout(() => { ask(heard); setHeard(undefined) }, 900); return () => clearTimeout(t) }, [heard])
   const mic = () => {
     if (listening) { stopListening(); return }
     setMicErr(undefined)
-    if (listen(t => { setQ(t); ask(t) }, e => { setListening(false); if (e) setMicErr(LISTEN_ERROR[e]) })) setListening(true)
+    setQ('')
+    if (listen(t => { setQ(t); setHeard(t) },
+      e => { setListening(false); if (e) setMicErr(LISTEN_ERROR[e]) },
+      t => setQ(t))) setListening(true)
   }
   const ask = async (text: string) => {
     if (!text.trim()) return
@@ -266,7 +272,8 @@ function Ask() {
         {canListen() && <button className={listening ? 'mic on' : 'mic'} aria-label="Speak" onClick={mic}>🎤</button>}
         <button className="go" onClick={() => ask(q)}>➤</button>
       </div>
-      {listening && <p className="hint"><T ur="سن رہا ہوں… بولیں (روکنے کے لیے 🎤 دوبارہ دبائیں)" en="Listening… speak now (tap 🎤 again to stop)" /></p>}
+      {listening && <p className="hint listening"><T ur={q ? 'سن رہا ہوں… جو سنا وہ اوپر لکھا جا رہا ہے' : 'سن رہا ہوں… بولیں (روکنے کے لیے 🎤 دوبارہ دبائیں)'} en={q ? 'Listening… what I hear is written above' : 'Listening… speak now (tap 🎤 again to stop)'} /></p>}
+      {heard && <p className="hint"><T ur="یہ سنا — جواب آ رہا ہے…" en="Got it — answering…" /></p>}
       {micErr && <div className="warn-line"><T ur={`🎤 ${micErr[0]}`} en={micErr[1]} /></div>}
       <p className="hint"><T ur="کی بورڈ کا 🎤 مائیک بھی استعمال کر سکتے ہیں" en="Tip: the keyboard's mic (Gboard Urdu voice typing) works too" /></p>
       {cur && (

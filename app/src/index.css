@@ -73,6 +73,7 @@ main { flex: 1; }
 .askbar .go, .askbar .mic { width: 56px; border-radius: 16px; background: var(--ask); color: #fff; font-size: 1.4rem; }
 .askbar .mic { background: var(--accent); } .askbar .mic.on { background: var(--poor); animation: pulse 1s infinite; }
 .hint { margin: -4px 0 0; text-align: center; }
+.hint.listening { color: var(--poor); animation: pulse 1s infinite; }
 .answer { position: relative; background: var(--card); border: 2px solid var(--ask); border-radius: 18px; padding: 10px 14px; text-align: center; }
 .answer.small { margin: 8px 16px 0; border-width: 1px; }
 .answer.muted { border-color: var(--line); }
