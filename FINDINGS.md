@@ -1,5 +1,13 @@
 # CHOTA — feasibility log
 
+> **Product direction (locked 2026-10-03):** CHOTA is an offline-first Urdu pastoral **memory** assistant: trip
+> breadcrumbs, named places, home/way back, reminders, herd count (confirmed vs estimated). It is not a
+> grazing-recommendation product.
+> **Satellite intelligence is stretch-only.** Tests 1/1b showed the vegetation signal is real only after strong rain
+> (~2 wet seasons in 8 years) and is noise in dry periods. The pipeline is kept in `feasibility/` but is not in the
+> MVP, the app or the demo (the Sentinel-2 image used as the offline basemap is only a picture, not analysis). The sections below are the experiment log; satellite "MVP scope" items are superseded.
+> Current build state: `STATUS.md`.
+
 ## Test 1 (2026-10-03) — short-term signal, 40×40 km around Nushki
 Scripts: `feasibility/t1_inventory.py`, `t1_signal.py`, `t1_spatial.py`.
 
@@ -65,7 +73,7 @@ Readings:
 - CHIRPS is 5 km and gauge-sparse here: use for "did it rain", not for where
 - Background GPS in a PWA stops when the screen is off
 
-## Revised zone schema
+## Zone schema (stretch feature only, not built)
 ```json
 {
   "zone_id": "SE_01",
@@ -84,13 +92,16 @@ Readings:
 }
 ```
 
-## MVP scope
+## ~~MVP scope~~ (satellite-era plan; superseded 2026-10-03)
+_Items 1–2 moved to Stretch. Items 3–4 are in the locked MVP and built in `app/` (rules-based Urdu, no packs)._
+
 1. Offline regional pack: zone GeoJSON + Pakistan mask + GeoNames subset + raster tiles (PMTiles)
 2. Two packs: **live Sep–Oct 2026** ("nothing stands out, region slightly drier than usual") and **labelled replay** (wet season)
 3. Home coordinate, breadcrumb trail, trip history, "you were here X days ago"
 4. Fixed set of Urdu intents → templated Urdu answers (pending Test 4)
 
-## Stretch
+## Stretch (only if time remains after the MVP is demo-ready)
+- **Satellite anomaly pack**, rain-triggered, and only shown after a strong wet season. Must say "nothing stands out" on most days and must never be presented as forage quantity
 - Rain-triggered auto-refresh of the anomaly pack
 - Herder-recorded observations as ground truth
 - Water layer (excluded by default)
@@ -124,3 +135,10 @@ Findings:
 Decision: **rules-first extraction + Urdu readback confirmation + follow-up questions**; LLM not on the critical path
 (optional fallback only for utterances the rules can't parse, always confirmed).
 Open risk: rules are brittle to ASR spelling errors. Next: blind set as *real Gboard Urdu voice-typing output*.
+
+## Decision (2026-10-03): product locked
+MVP: grazing trip memory (local GPS breadcrumbs), user-saved named places, home distance + direction + breadcrumb way
+back, local reminders, herd count with confirmed vs estimated state and recount prompts, local Urdu interaction.
+Cut: animal health diagnosis/observations, individual animal ID, detailed finances, water discovery, satellite
+grazing recommendation as core. (Test 5's ledger amounts/credit fields are therefore not used by the app.)
+Principle: CHOTA must distinguish *recorded* from *assumed*. Implementation notes in `STATUS.md`.

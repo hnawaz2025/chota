@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getHome, setHome, type Species, type HerdEventType, type Rating, type Reminder } from './db'
 import { now, shiftDays, clockOffsetDays } from './clock'
-import { onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, currentFixState, checkOpenTrip, resumeTrip, type Fix, type OpenTrip } from './gps'
+import { onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, currentFixState, checkOpenTrip, resumeTrip, canHoldScreen, type Fix, type OpenTrip } from './gps'
 import { spanUr, spanEn } from './trail'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
 import { answer, commitPending, agoUr, agoEn, dueUr, dueEn, type Answer } from './answer'
@@ -137,6 +137,8 @@ function TripScreen({ go, onEnded }: { go: (s: Screen) => void; onEnded: (id: nu
     <div className="trip-screen">
       <MapView focus={focus} />
       <GpsBanner />
+      <p className="muted screen-note"><T ur={canHoldScreen() ? 'CHOTA کھلا رکھیں — اسکرین بند ہو تو راستہ ریکارڈ نہیں ہوتا' : 'یہ فون اسکرین جاگتی نہیں رکھ سکتا: اسکرین بند ہوتے ہی راستہ ریکارڈ ہونا رک جائے گا۔'}
+        en={canHoldScreen() ? 'Keep CHOTA open — no trail is recorded with the screen off' : 'This phone cannot keep the screen on: recording stops when the screen turns off.'} /></p>
       <div className="stats">
         <div><b>{Math.floor(mins / 60)}:{String(mins % 60).padStart(2, '0')}</b><T ur="وقت" en="time" /></div>
         <div><b>{fmtKm(stats?.distanceM ?? 0)}</b><T ur={gaps ? `ریکارڈ · ${gaps} وقفے` : 'ریکارڈ شدہ'} en={gaps ? `recorded · ${gaps} gap${gaps > 1 ? 's' : ''}` : 'recorded'} /></div>
@@ -309,10 +311,12 @@ function Reminders() {
 
 function FiredReminder({ r, onClose, go }: { r: Reminder; onClose: () => void; go: (s: Screen) => void }) {
   const isHerd = r.kind?.startsWith('herd')
+  const lateMs = (r.firedAt ?? now()) - r.dueAt
   return (
     <Modal onClose={onClose}>
       <span className="emoji">🔔</span>
       <div className="ur big" dir="auto">{r.text}</div>
+      {r.source === 'user' && lateMs > LATE_MS && <p className="warn-line"><T ur={`یہ ${spanUr(lateMs)} دیر سے دکھائی جا رہی ہے — وقت پر ایپ بند تھی۔`} en={`Shown ${spanEn(lateMs)} late — the app was closed when it was due.`} /></p>}
       <div className="rate">
         {isHerd && <button className="good" onClick={() => { db.reminders.update(r.id!, { status: 'done' }); onClose(); go('herd') }}><T ur="ابھی گنتی کریں" en="Count now" /></button>}
         <button onClick={() => { db.reminders.update(r.id!, { status: 'done' }); onClose() }}>✓ <T ur="ٹھیک ہے" en="OK" /></button>
@@ -321,6 +325,9 @@ function FiredReminder({ r, onClose, go }: { r: Reminder; onClose: () => void; g
     </Modal>
   )
 }
+
+/** Reminders only fire while CHOTA is open; past this, say it is late instead of pretending it is on time. */
+const LATE_MS = 10 * 60000
 
 // ---------------- Herd ----------------
 const ADD_TYPES: [HerdEventType, string, string][] = [['birth', 'پیدائش', 'Birth'], ['purchase', 'خرید', 'Bought']]

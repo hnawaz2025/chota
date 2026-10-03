@@ -30,10 +30,11 @@ export async function checkReminders(): Promise<Reminder[]> {
 }
 
 function notify(r: Reminder) {
+  const body = now() - r.dueAt > 10 * 60000 && r.source === 'user' ? `(دیر سے) ${r.text}` : r.text
   try {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-    navigator.serviceWorker?.ready.then(reg => reg.showNotification('CHOTA', { body: r.text, tag: `r${r.id}`, icon: '/icon-192.png' }))
-      .catch(() => new Notification('CHOTA', { body: r.text }))
+    navigator.serviceWorker?.ready.then(reg => reg.showNotification('CHOTA', { body, tag: `r${r.id}`, icon: '/icon-192.png' }))
+      .catch(() => new Notification('CHOTA', { body }))
   } catch { /* notifications unavailable */ }
 }
 

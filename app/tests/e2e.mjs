@@ -72,6 +72,16 @@ expect('12c', (await dump()).confirmations.length === nConf, 'nothing written be
 await click('ہاں، درج کریں'); await p.waitForTimeout(600); const h12d = await p.textContent('.answer'); step('12c', 'confirmed: ' + h12d)
 expect('12c', h12d.includes('تصدیق شدہ گنتی') && (await dump()).confirmations.length === nConf + 1, 'recount 46 written after yes')
 
+// N1. A reminder due while the app was closed is shown, but labelled late (not as if on time).
+await home(); await ask('2 ghante baad pani check karna yaad dilana')
+await settings(); await click('+1 days'); await p.reload(); await p.waitForTimeout(2500)
+let n1 = ''
+for (let i = 0; i < 5 && await p.locator('.modal').count(); i++) {   // several reminders may be queued
+  const t = await p.textContent('.modal'); if (t.includes('پانی') || t.includes('pani')) { n1 = t; await shot('N1-late-reminder') }
+  await p.getByText('ٹھیک ہے').first().click().catch(() => {}); await p.waitForTimeout(400)
+}
+step('N1', 'late reminder: ' + n1); expect('N1', n1.includes('دیر سے'), 'late reminder labelled late')
+
 // ---------------- Herd-count safety ----------------
 // H1. Rejected read-back writes nothing.
 const nEv = (await dump()).herdEvents.length

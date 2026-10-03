@@ -1,6 +1,6 @@
 # CHOTA — status
 
-_Last updated: 2026-10-03 · milestones 1–3 done_
+_Last updated: 2026-10-03 · milestones 1–5 done · PWA is demo-ready (desktop-verified; not yet on a real phone)_
 
 **Product (locked):** an offline-first Urdu pastoral memory assistant for livestock herders around Nushki, Balochistan.
 **Principle:** CHOTA distinguishes *recorded* from *assumed*. It never treats missing records as truth.
@@ -13,8 +13,9 @@ _Last updated: 2026-10-03 · milestones 1–3 done_
 | 1 | Honest Trail (GPS freshness, gaps, forgotten trips) | ✅ done, e2e green |
 | 2 | Herd-count safety (read-back before writing, no-baseline species) | ✅ done, e2e green |
 | 3 | "In my records" wording on historical answers | ✅ done, e2e green |
-| 4 | Full test run + failure report | ⏳ next |
-| 5 | Docs (README, FINDINGS) + PWA limits report | ⏳ |
+| 4 | Full test run + failure report | ✅ 0 failures (details below) |
+| 5 | Docs (README, FINDINGS) + PWA limits report | ✅ done |
+| 6 | **Real-phone field test** (checklist below) | ⏳ next, needs a mid-range Android |
 
 ## What milestone 1 changed
 - `src/trail.ts` (new, pure): splits a trip into **recorded segments** and **gaps**:
@@ -71,6 +72,30 @@ _Last updated: 2026-10-03 · milestones 1–3 done_
 - The herd estimate is described as "based only on recorded changes".
 - The history screen header says: "Only trips recorded in CHOTA — not a complete history".
 
+## Milestone 4: PWA robustness found while testing
+- **Wake lock was lost after the first screen-off.** It was requested once at trip start, but the browser releases it
+  whenever the page is hidden. Fix: it is re-taken when the app becomes visible, after a reload with an open trip,
+  and on "still on this trip".
+- **Overdue reminders looked on-time.** A reminder that comes due while the app is closed shows on next open as
+  "N دیر سے — وقت پر ایپ بند تھی". The system notification body gets a "(دیر سے)" prefix.
+- Trip screen: a one-line note says the trail is not recorded with the screen off. It shows a stronger warning if
+  the phone can't keep the screen on.
+
+## Test results (final run, 2026-10-03)
+| Suite | Result |
+|---|---|
+| `tsc -b` | clean |
+| `oxlint` | 0 errors, 5 warnings (all pre-existing: inline `Row` component in Settings, MapView hook deps) |
+| `npm test` (32 intent cases + 8 trail-gap tests) | **all pass** |
+| `tests/e2e.mjs` (32 steps: 12 demo + honesty checks) | **all pass on 3 consecutive runs, 0 console errors** |
+
+Failures hit and fixed along the way (all real bugs, not test noise):
+1. A reminder pop-up covered the forgotten-trip prompt.
+2. The voice recount wrote without confirmation. This is the old behaviour, now intentionally changed.
+3. Urdu species grammar.
+
+The only failure on the untouched baseline was "none": the old e2e had no assertions.
+
 ## Tests
 - `npm test`: 32/32 Urdu intent cases, plus 8 trail-gap unit tests.
 - `tests/e2e.mjs` (Playwright, production build, 390×844):
@@ -82,8 +107,60 @@ _Last updated: 2026-10-03 · milestones 1–3 done_
 
   It now asserts and exits non-zero on failure. Status: **all pass, 0 console errors.**
 
+## PWA limits report
+
+**Does the app survive the full demo flow?** Yes, in Playwright Chromium at phone size (390×844), against the
+production build, including offline reload. It has **not** been run on a physical Android phone yet.
+
+**What fails when the screen turns off?** This is from Android Chrome platform behaviour, not yet measured on our phone:
+- The page is hidden, so `watchPosition` stops delivering, timers are throttled and then frozen, and the wake lock is
+  released. **No breadcrumbs are recorded.**
+- CHOTA's handling:
+  - silence over 5 min becomes a recorded gap, drawn dotted and excluded from distance
+  - the way back and duration answers state the gap
+  - when the screen comes back on: an immediate GPS refresh, and the wake lock is re-taken
+  - if the app was gone for over 2 h (or the trip is over 14 h old): the forgotten-trip prompt on next launch
+- Not fixed:
+  - the path during the gap is simply unknown
+  - a screen-off **under 5 min** is not flagged, and its ends are joined as if walked (up to ~400 m at herding pace). This is the threshold trade-off.
+- Reminders due during screen-off don't fire until the app is visible again, and are then labelled late.
+- Swiping the app away behaves the same as screen-off, plus the forgotten-trip check.
+- The demo workaround is the wake lock (screen stays on). Its battery cost over a 4–6 h trip is **unmeasured**.
+
+**Can local notifications work reliably enough for the demo?**
+- **Yes, if CHOTA is open in the foreground.** It checks every 15 s and fires a pop-up, Urdu text-to-speech if
+  available, and a system notification if permission is granted.
+- **No, if it's closed:**
+  - the web has no scheduled local notifications (Notification Triggers was abandoned)
+  - Periodic Background Sync is gated on engagement and runs at most about every 12 h
+  - push needs a server and network
+- For the demo, trigger reminders with the "+N days" clock, or keep the app open. Reminder parsing supports hours and
+  days but not minutes ("5 منٹ بعد"). That would be a small addition if a live in-demo reminder is wanted.
+
+**Would a minimal Capacitor wrapper materially improve the prototype?**
+- **Recommendation: not now.**
+- It would fix the two real limits:
+  - background location, via a foreground-service plugin
+  - closed-app reminders, via `@capacitor/local-notifications`
+- But:
+  1. This machine has no Android SDK, `adb` or Android Studio (only JDK 17), so the toolchain is a multi-GB setup first.
+  2. Background location means Android 14 foreground-service types, the "Allow all the time" permission, and a
+     second GPS code path. That is the riskiest part, and it can only be tested on a device.
+  3. The PWA now records honestly what it can't capture, so the demo is truthful without native code.
+- If time remains **after** the real-phone test, the lowest-risk step is to wrap with **local-notifications only**,
+  keeping the web GPS path unchanged. Background geolocation should wait.
+
+## Real-phone field test checklist (milestone 6)
+1. Install the PWA on a mid-range Android, turn on airplane mode, and confirm the app, map and fonts load.
+2. Real GPS (Demo GPS off), 30-min walk with the screen on: check breadcrumb density, accuracy, and battery %/hour.
+3. Same walk with the screen off for about 10 min: confirm a gap appears, is drawn dotted, and the way back mentions it.
+4. Lock the phone for 3 h during an open trip, then reopen: the forgotten-trip prompt should appear.
+5. Gboard Urdu voice typing **offline** into Ask: record what text it actually emits (seeds the blind test set from Test 5).
+6. Urdu text-to-speech voice: present or absent on the device.
+7. Reminder due in 1 h with the app (a) open, (b) backgrounded, (c) closed: note when and whether it fires.
+
 ## Known limits / open issues
-- **Screen off:** the web app gets no GPS in the background. This is now *recorded honestly as a gap*, but it isn't prevented. Native wrapping is deferred by decision.
-- Reminders only fire while the app is open (see milestone 5 report).
+- Screen off / closed-app reminders: see the PWA limits report above.
+- Never tested on a real phone. Battery cost of keeping the screen on is unknown.
 - GeoNames has a duplicate "Kili Jamaldini" label (cosmetic).
 - Urdu wording of the new caveats is mine; it needs review by a native speaker from the area.

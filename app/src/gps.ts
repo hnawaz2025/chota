@@ -70,13 +70,15 @@ function refresh() {
     { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 })
 }
 // Screen back on: the watch may have been suspended, so ask straight away instead of waiting for the timer.
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh() })
+// The browser also drops the screen wake lock whenever the page is hidden, so take it again.
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { refresh(); holdScreen() } })
 
 export function startPositioning() {
   if (watchId !== undefined) navigator.geolocation?.clearWatch(watchId)
   if (simTimer !== undefined) clearInterval(simTimer)
   if (refreshTimer !== undefined) clearInterval(refreshTimer)
   watchId = simTimer = refreshTimer = undefined
+  holdScreen()   // an open trip after a reload needs the screen held too (no-op while a forgotten trip is under review)
   if (isSimulated()) { simTimer = window.setInterval(simTick, 1000); simTick(); return }
   watchId = navigator.geolocation?.watchPosition(p => emit(fromPosition(p)),
     () => { /* keep last fix; UI shows its age */ },
@@ -87,7 +89,14 @@ export function startPositioning() {
 // ---------- trip recorder ----------
 let activeTripId: number | undefined = Number(lsGet('chota.activeTrip')) || undefined
 let lastSaved: Fix | undefined
-let wakeLock: { release: () => Promise<void> } | undefined
+let wakeLock: { release: () => Promise<void>; released?: boolean } | undefined
+export const canHoldScreen = () => 'wakeLock' in navigator
+export const screenHeld = () => !!wakeLock && !wakeLock.released
+/** Keep the screen on during a trip: in a web app, GPS stops when the screen goes off. */
+async function holdScreen() {
+  if (!activeTripId || holdRecording || screenHeld() || document.visibilityState !== 'visible') return
+  try { wakeLock = await (navigator as any).wakeLock?.request('screen') } catch { /* not supported / denied */ }
+}
 /** While an open trip from an earlier session is being reviewed, new fixes must not be appended to it. */
 let holdRecording = false
 export const activeTrip = () => activeTripId
@@ -107,7 +116,7 @@ export async function startTrip() {
   activeTripId = await db.trips.add({ startedAt: now() }) as number
   lsSet('chota.activeTrip', String(activeTripId)); lastSaved = undefined; holdRecording = false
   if (last && recordable(last)) { lastSaved = last; await db.points.add({ tripId: activeTripId, t: last.t, lat: last.lat, lon: last.lon, acc: last.acc }) }
-  try { wakeLock = await (navigator as any).wakeLock?.request('screen') } catch { /* not supported */ }
+  await holdScreen()
   if (isSimulated()) simSet({ paused: false, reset: true })
   return activeTripId
 }
@@ -136,6 +145,7 @@ export async function endTrip(at?: number) {
   const s = await tripStats(id)
   await db.trips.update(id, { distanceM: s.distanceM, furthestFromHomeM: s.furthestFromHomeM, direction: s.direction, gapCount: s.trail.gaps.length, gapMs: s.trail.gapMs })
   try { await wakeLock?.release() } catch { /* ignore */ }
+  wakeLock = undefined
   if (isSimulated()) simSet({ paused: true })
   return id
 }
@@ -155,4 +165,4 @@ export async function checkOpenTrip(): Promise<OpenTrip | undefined> {
   return { tripId: activeTripId, startedAt: trip.startedAt, lastPointT }
 }
 /** Herder says they are still on this trip: keep recording; the silence stays in the record as a gap. */
-export function resumeTrip() { holdRecording = false }
+export function resumeTrip() { holdRecording = false; holdScreen() }

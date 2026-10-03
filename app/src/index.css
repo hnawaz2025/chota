@@ -118,6 +118,8 @@ main { flex: 1; }
 .events q { display: block; font-family: 'Noto Nastaliq Urdu', serif; }
 .warn-line { margin-top: 8px; background: var(--warn); color: var(--warn-ink); border-radius: 12px; padding: 4px 8px; text-align: center; }
 .warn-line.gps { margin: 0; border-radius: 0; }
+.screen-note { text-align: center; margin: 2px 16px 0; }
+.screen-note .tx .ur { font-size: .78rem; line-height: 1.9; } .screen-note .tx .en { font-size: .65rem; }
 .note-line { margin-top: 6px; text-align: center; color: var(--muted); }
 .card.set { display: flex; flex-direction: column; gap: 8px; }
 .card.set label { font-size: .9rem; display: flex; gap: 8px; align-items: center; }
