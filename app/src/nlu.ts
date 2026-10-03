@@ -78,25 +78,78 @@ export function findDir(text: string): Dir | undefined {
 const DAY = 86400000
 const WEEKDAYS: Record<string, number> = { 'پیر': 1, 'منگل': 2, 'بدھ': 3, 'جمعرات': 4, 'جمعہ': 5, 'اتوار': 0,
   peer: 1, mangal: 2, budh: 3, jumerat: 4, juma: 5, jumma: 5, itwar: 0 }
-/** Due time for a future phrase. Defaults: tomorrow = 8:00 if "subah", 17:00 if "shaam", else 9:00. */
-export function parseDue(text: string, toks: string[], nowMs: number): number {
+/** What was assumed when the herder didn't say it. The answer must state it, like an assumed herd quantity. */
+export type WhenAssumed = 'no_time' | 'no_date_or_time' | 'am' | 'pm'
+export interface When { at: number; assumed?: WhenAssumed }
+
+const PART: [string[], 'morning' | 'noon' | 'evening' | 'night'][] = [
+  [['صبح', 'subah', 'subha', 'morning', 'am'], 'morning'], [['دوپہر', 'dopahar', 'afternoon', 'noon'], 'noon'],
+  [['شام', 'shaam', 'sham', 'evening', 'pm'], 'evening'], [['رات', 'raat', 'night'], 'night'],
+]
+const BAJE = ['بجے', 'بجکر', 'baje', 'bje', 'bajay', 'bajey', "o'clock", 'oclock']
+
+/** Clock time said in the phrase: "6:00", "6 بجے", "چھ بجے", "ساڑھے چھ بجے", "at 6", "6 am". */
+function clockTime(text: string, toks: string[]): { h: number; m: number } | undefined {
+  const c = text.match(/(\d{1,2}):(\d{2})/)
+  if (c) return { h: +c[1], m: +c[2] }
+  const i = toks.findIndex(t => BAJE.includes(t))
+  if (i > 0) {
+    const v = numval(toks[i - 1]), pre = PREFIX[toks[i - 2]]
+    if (v !== undefined && Number.isInteger(v) && v <= 24) {
+      if (pre === 0.25) return { h: v, m: 15 }
+      if (pre === 0.5) return { h: v, m: 30 }
+      if (pre === -0.25) return { h: v - 1, m: 45 }
+      return { h: v, m: 0 }
+    }
+    if (v === 1.5) return { h: 1, m: 30 }      // ڈیڑھ بجے
+    if (v === 2.5) return { h: 2, m: 30 }      // ڈھائی بجے
+  }
+  const e = text.match(/\b(\d{1,2})\s*(am|pm)\b/) ?? text.match(/\bat (\d{1,2})\b/)
+  if (e) return { h: +e[1], m: 0 }
+}
+
+/**
+ * Due time for a future phrase. A spoken clock time wins; morning/evening words set AM/PM.
+ * Defaults when not said (and reported as assumed): a day without a time -> morning 8 / noon 13 / evening 17 /
+ * night 20 / else 9; no day and no time -> one hour from now; an hour without AM/PM -> 5-11 morning, 12-4 afternoon.
+ */
+export function parseWhen(text: string, toks: string[], nowMs: number): When {
   const d = new Date(nowMs)
   let days: number | undefined
-  const m = text.match(/(\S+) (دن|din|ghante|گھنٹے) (بعد|baad)/)
+  const m = text.match(/(\S+) (دن|din|ghante|گھنٹے|hours?|days?) (بعد|baad|later)/) ?? text.match(/in (\S+) (hours?|days?)/)
   if (m) {
     const n = numval(m[1]) ?? 1
-    if (m[2] === 'گھنٹے' || m[2] === 'ghante') return nowMs + n * 3600000
+    if (/^(گھنٹے|ghante|hours?)$/.test(m[2])) return { at: nowMs + n * 3600000 }
     days = n
-  } else if (toks.includes('پرسوں') || toks.includes('parson')) days = 2
-  else if (toks.includes('کل') || toks.includes('kal')) days = 1
-  else if (has(text, 'اگلے ہفتے', 'agle hafte')) days = 7
-  else if (toks.includes('آج') || toks.includes('aaj')) days = 0
+  } else if (toks.includes('پرسوں') || toks.includes('parson') || has(text, 'day after tomorrow')) days = 2
+  else if (toks.includes('کل') || toks.includes('kal') || toks.includes('tomorrow')) days = 1
+  else if (has(text, 'اگلے ہفتے', 'agle hafte', 'next week')) days = 7
+  else if (toks.includes('آج') || toks.includes('aaj') || toks.includes('today') || toks.includes('tonight')) days = 0
   else for (const [w, wd] of Object.entries(WEEKDAYS)) if (toks.includes(w)) { days = ((wd - d.getDay() + 7) % 7) || 7; break }
-  if (days === undefined) return nowMs + 3600000   // no date said: one hour from now
-  const hour = has(text, 'صبح', 'subah', 'subha') ? 8 : has(text, 'شام', 'shaam', 'sham') ? 17 : has(text, 'رات', 'raat') ? 20 : has(text, 'دوپہر', 'dopahar') ? 13 : 9
-  const due = new Date(nowMs + days * DAY); due.setHours(hour, 0, 0, 0)
-  return days === 0 && due.getTime() < nowMs ? nowMs + 3600000 : due.getTime()
+
+  const part = PART.find(([ws]) => ws.some(w => toks.includes(w)))?.[1]
+  const clock = clockTime(text, toks)
+  let assumed: WhenAssumed | undefined
+  let h: number, min = 0
+  if (clock) {
+    h = clock.h; min = clock.m
+    if (h < 12) {
+      if (part === 'noon' || part === 'evening') h += 12
+      else if (part === 'night') h = h >= 6 ? h + 12 : h
+      else if (part !== 'morning') { if (h >= 1 && h <= 4) { h += 12; assumed = 'pm' } else if (h >= 5) assumed = 'am' }
+    }
+  } else {
+    if (days === undefined) return { at: nowMs + 3600000, assumed: 'no_date_or_time' }
+    h = part === 'morning' ? 8 : part === 'evening' ? 17 : part === 'night' ? 20 : part === 'noon' ? 13 : 9
+    if (!part) assumed = 'no_time'
+  }
+  const due = new Date(nowMs + (days ?? 0) * DAY); due.setHours(h, min, 0, 0)
+  // A time with no day: today if still ahead, else tomorrow.
+  if (days === undefined && due.getTime() <= nowMs) due.setTime(due.getTime() + DAY)
+  if (days === 0 && due.getTime() < nowMs) return { at: nowMs + 3600000, assumed: 'no_time' }
+  return { at: due.getTime(), assumed }
 }
+export const parseDue = (text: string, toks: string[], nowMs: number) => parseWhen(text, toks, nowMs).at
 
 // ---------- place tags ----------
 const PLACE_WORDS: [PlaceType, string[]][] = [
@@ -122,7 +175,7 @@ export type Intent =
   | { kind: 'trips_this_month' } | { kind: 'last_trip_duration' }
   | { kind: 'been_here' }
   | { kind: 'place_distance'; name: string }
-  | { kind: 'reminder'; text: string; dueAt: number }
+  | { kind: 'reminder'; text: string; dueAt: number; assumed?: WhenAssumed }
   | { kind: 'herd_confirm'; counts: { species: Species; count: number }[] }
   | { kind: 'herd_event'; events: HerdEventParse[] }
   | { kind: 'herd_status' }
@@ -187,7 +240,7 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
   }
   // 3. reminders (future tense / "yaad dilana")
   if (has(text, ...FUTURE) || has(text, 'check karna', 'dekhna', 'دیکھنا', 'چیک کرنا')) {
-    if (!has(text, 'دکھاؤ', 'dikhao')) return { kind: 'reminder', text: raw.trim(), dueAt: parseDue(text, toks, nowMs) }
+    if (!has(text, 'دکھاؤ', 'dikhao')) { const w = parseWhen(text, toks, nowMs); return { kind: 'reminder', text: raw.trim(), dueAt: w.at, assumed: w.assumed } }
   }
   // 3. home
   if (has(text, 'واپس', 'wapas', 'way back') && has(text, 'راستہ', 'رستہ', 'rasta', 'path', 'route')) return { kind: 'way_back' }

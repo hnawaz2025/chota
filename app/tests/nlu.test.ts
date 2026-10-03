@@ -44,6 +44,16 @@ const cases: [string, string, (i: any) => boolean][] = [
   ['trip khatam', 'end_trip', () => true],
   ['ghar pohanch gaya', 'end_trip', () => true],
   ['کل صبح ٹیوب ویل جانا ہے', 'reminder', () => true],
+  ['کل صبح 6:00 بجے ریوڑ کو سفر پہ لے کے جانا ہے یاد دلانا مجھے', 'reminder', (i: any) => { const t = new Date(i.dueAt); return t.getDate() === 4 && t.getHours() === 6 && t.getMinutes() === 0 }],
+  ['remind me tomorrow at 6', 'reminder', (i: any) => { const t = new Date(i.dueAt); return t.getDate() === 4 && t.getHours() === 6 && t.getMinutes() === 0 && i.assumed === 'am' }],
+  ['kal shaam 6 baje pani check karna yaad dilana', 'reminder', (i: any) => { const t = new Date(i.dueAt); return t.getDate() === 4 && t.getHours() === 18 && t.getMinutes() === 0 }],
+  ['کل چھ بجے یاد دلانا', 'reminder', (i: any) => { const t = new Date(i.dueAt); return t.getDate() === 4 && t.getHours() === 6 && t.getMinutes() === 0 && i.assumed === 'am' }],
+  ['کل ساڑھے چھ بجے یاد دلانا', 'reminder', (i: any) => { const t = new Date(i.dueAt); return t.getDate() === 4 && t.getHours() === 6 && t.getMinutes() === 30 }],
+  ['کل دو بجے دوائی لانی ہے', 'reminder', (i: any) => { const t = new Date(i.dueAt); return t.getDate() === 4 && t.getHours() === 14 && t.getMinutes() === 0 && i.assumed === 'pm' }],
+  ['آج رات 9 بجے یاد دلانا', 'reminder', (i: any) => { const t = new Date(i.dueAt); return t.getDate() === 3 && t.getHours() === 21 && t.getMinutes() === 0 }],
+  ['4 بجے یاد دلانا', 'reminder', (i: any) => { const t = new Date(i.dueAt); return t.getDate() === 3 && t.getHours() === 16 && t.getMinutes() === 0 }],
+  ['کل یاد دلانا', 'reminder', (i: any) => { const t = new Date(i.dueAt); return t.getDate() === 4 && t.getHours() === 9 && t.getMinutes() === 0 && i.assumed === 'no_time' }],
+  ['پانی بھرنا یاد دلانا', 'reminder', (i: any) => i.assumed === 'no_date_or_time'],
 ]
 let pass = 0
 for (const [t, kind, check] of cases) {

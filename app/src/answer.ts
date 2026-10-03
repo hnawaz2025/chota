@@ -57,6 +57,13 @@ export async function commitPending(p: PendingWrite): Promise<Answer> {
 }
 
 const RATING_UR = { good: 'اچھا', okay: 'ٹھیک', poor: 'کمزور' } as const
+/** Said back when the herder did not give it, so a wrong guess is caught now rather than when it fires. */
+const ASSUMED_WHEN = {
+  no_time: ['وقت نہیں بتایا، اس لیے یہ وقت رکھا', 'no time said, so this time was chosen'],
+  no_date_or_time: ['دن اور وقت نہیں بتایا، اس لیے ایک گھنٹے بعد', 'no day or time said, so in one hour'],
+  am: ['صبح یا شام نہیں بتایا، صبح مانی', 'morning or evening not said; assumed morning'],
+  pm: ['صبح یا شام نہیں بتایا، دوپہر/شام مانی', 'morning or evening not said; assumed afternoon'],
+} as const
 /** Every historical answer is about what CHOTA recorded, never a claim of complete history. */
 const REC_UR = 'میرے ریکارڈ میں', REC_EN = 'In my records'
 export const agoUr = (t: number) => { const d = Math.floor((now() - t) / DAY); return d <= 0 ? 'آج' : d === 1 ? 'کل' : `${d} دن پہلے` }
@@ -232,7 +239,9 @@ export async function answer(text: string): Promise<Answer> {
       const place = places.find(p => intent.text.includes(p.name))
       await db.reminders.add({ text: intent.text, dueAt: intent.dueAt, status: 'pending', source: 'user', createdAt: now(), placeId: place?.id,
         kind: /گنتی|count|گن/.test(intent.text) ? 'herd_count' : undefined })
-      return A(`یاد دہانی لگا دی: ${dueUr(intent.dueAt)} — "${intent.text}"`, `Reminder set for ${dueEn(intent.dueAt)}: "${intent.text}"`)
+      const as = intent.assumed ? ASSUMED_WHEN[intent.assumed] : undefined
+      return A(`یاد دہانی لگا دی: ${dueUr(intent.dueAt)}${as ? ` (${as[0]})` : ''} — "${intent.text}"`,
+        `Reminder set for ${dueEn(intent.dueAt)}${as ? ` (${as[1]})` : ''}: "${intent.text}"`)
     }
     case 'herd_confirm':
     case 'herd_event': {
