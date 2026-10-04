@@ -1,7 +1,7 @@
 /** Executes a parsed intent against the local DB and returns a templated Urdu + English answer. */
 import { db, getHome, PLACE_TAGS, type Place, type PlaceType, type Trip } from './db'
 import { now, DAY } from './clock'
-import { parse, signOf, normalize, speciesQty, parseWhen, findDir, type Intent, type HerdEventParse } from './nlu'
+import { parse, signOf, normalize, speciesQty, parseWhen, findDir, planNeeds, type Intent, type HerdEventParse, type PlanNeeds } from './nlu'
 import { classify, type IntentModel } from './intentModel'
 import type { HerdEventType } from './db'
 import type { Species } from './db'
@@ -187,6 +187,7 @@ export const LABEL_UR: Record<string, [string, string, string]> = {
   herd_event_purchase: ['🐐', 'جانور خریدے', 'animals bought'], herd_event_birth: ['🐐', 'بچے پیدا ہوئے', 'births'],
   herd_event_death: ['🐐', 'جانور مرے', 'deaths'], herd_event_loss: ['🐐', 'جانور گم / چوری', 'lost / stolen'],
   herd_event_slaughter: ['🐐', 'جانور ذبح', 'slaughtered'],
+  plan_today: ['🧭', 'آج کہاں جاؤں (ریکارڈ سے)', 'where to go today (from records)'],
 }
 let modelP: Promise<IntentModel | undefined> | undefined
 const loadModel = () => modelP ??= fetch(`${import.meta.env.BASE_URL}data/intent-model.json`).then(r => r.ok ? r.json() : undefined).catch(() => undefined)
@@ -216,6 +217,7 @@ async function fromLabel(label: string, text: string, places: Place[]): Promise<
       return hit ? go({ kind: 'place_distance', name: hit.name })
         : need(places.length ? `کون سی جگہ؟ محفوظ جگہیں: ${places.map(p => p.name).join('، ')}` : 'ابھی کوئی جگہ محفوظ نہیں۔', places.length ? 'Which place? Saved places are listed above.' : 'No places saved yet.')
     }
+    case 'plan_today': return go({ kind: 'plan_today', ...planNeeds(text) })
     case 'save_place': return need('جگہ یاد رکھنے کے لیے کہیں: "اس جگہ کو پرانا چارہ یاد رکھو"، یا سفر میں 📍 دبائیں۔', 'To save a place say "remember this place as …", or tap 📍 on the trip screen.')
     default: return go({ kind: label } as Intent)
   }
@@ -248,12 +250,83 @@ export async function answer(text: string, forced?: string): Promise<Answer> {
   return { ur: 'پکا نہیں سمجھا۔ کیا آپ کا مطلب یہ ہے؟', en: 'Not sure I understood. Did you mean one of these?', ok: false, intent: 'unknown', choices, ai: { label: top.label, p: top.p } }
 }
 
+/**
+ * "Where should I go today?" answered ONLY from the herder's own records (saved water/shade/grazing places and their
+ * trip ratings), each with its age. Not advice and not a forecast: today's water and grass are unknown to CHOTA.
+ */
+async function planToday(need: PlanNeeds, places: Place[]): Promise<Answer> {
+  const A = (ur: string, en: string, map?: MapFocus, ok = true): Answer => ({ ur, en, map, ok, intent: 'plan_today' })
+  const home = await getHome(), f = lastFix(), fs = currentFixState()
+  const from = f && (fs.state === 'ok' || fs.state === 'poor') ? f : home
+  if (!from) return A('پہلے گھر محفوظ کریں یا GPS کا انتظار کریں، تاکہ فاصلے بتا سکوں۔', 'Set home or wait for GPS so I can give distances.', undefined, false)
+  const fromUr = from === home ? 'گھر سے' : 'یہاں سے', fromEn = from === home ? 'from home' : 'from here'
+  const maxM = need.near ? 3000 : 8000, OLD = 21 * DAY
+  type Spot = { ur: string; en: string; lat: number; lon: number; t: number; placeId?: number; tripId?: number; score: number; note?: string; ratingUr?: string }
+  const d = (s: { lat: number; lon: number }) => distanceM(from, s)
+  const asSpot = (p: Place, score = 0): Spot => ({ ur: p.name, en: p.name, lat: p.lat, lon: p.lon, t: p.createdAt, placeId: p.id, score, note: p.note })
+  const water = places.filter(p => p.type === 'water').map(p => asSpot(p)).sort((a, b) => d(a) - d(b))
+  const shade = places.filter(p => p.type === 'shade').map(p => asSpot(p))
+  // grazing: saved grazing places + where rated trips went furthest from home
+  const graze: Spot[] = places.filter(p => p.type === 'grazing').map(p => asSpot(p, 1.5))
+  for (const t of (await lastEnded()).filter(t => t.rating === 'good' || t.rating === 'okay')) {
+    const pts = await db.points.where('tripId').equals(t.id!).toArray()
+    if (!pts.length || !home) continue
+    const far = pts.reduce((a, b) => distanceM(home, b) > distanceM(home, a) ? b : a)
+    graze.push({ ur: `${agoUr(t.startedAt)} والا سفر`, en: `the trip ${agoEn(t.startedAt)}`, lat: far.lat, lon: far.lon, t: t.startedAt, tripId: t.id,
+      score: t.rating === 'good' ? 2 : 1, ratingUr: RATING_UR[t.rating!] })
+  }
+  const days = (t: number) => (now() - t) / DAY
+  // Grazing value from the herder's own ratings: better rating and more recent ranks higher.
+  const gv = (s: Spot) => s.score - days(s.t) / 30
+  const near = graze.filter(s => d(s) <= maxM)
+  // Water and grazing are chosen together: water with well-rated recent grazing within 1.5 km beats merely the closest.
+  const wv = (x: Spot) => Math.max(0, ...near.filter(s => distanceM(x, s) <= 1500).map(gv)) - d(x) / 2000 - (now() - x.t > OLD ? 0.5 : 0)
+  const w = water.filter(s => d(s) <= maxM).sort((a, b) => wv(b) - wv(a))[0] ?? (need.water ? water[0] : undefined)
+  const g = near.map(s => ({ s, v: gv(s) + (w && distanceM(w, s) <= 1500 ? 1.5 : 0) })).sort((a, b) => b.v - a.v)[0]?.s
+  const anchor = w ?? g ?? from
+  const sh = need.shade ? shade.filter(s => d(s) <= maxM).sort((a, b) => distanceM(anchor, a) - distanceM(anchor, b))[0] : undefined
+
+  const where = (s: Spot) => { const dir = compass(bearingDeg(from, s)); return { ur: `${fmtKmUr(d(s))} ${DIR_UR[dir]}`, en: `${fmtKm(d(s))} ${dir}` } }
+  const age = (s: Spot) => ({
+    ur: (s.ratingUr ? `${agoUr(s.t)} چارہ "${s.ratingUr}" بتایا` : `${agoUr(s.t)} محفوظ کی`) + (now() - s.t > OLD ? '، ⚠️ پرانا ریکارڈ' : '') + (s.note ? `، نوٹ: ${s.note}` : ''),
+    en: (s.ratingUr ? `rated ${agoEn(s.t)}` : `saved ${agoEn(s.t)}`) + (now() - s.t > OLD ? ', ⚠️ old record' : '') })
+  const line = (icon: string, lu: string, le: string, s: Spot) => {
+    const far = d(s) > maxM ? { ur: ' (آپ کی حد سے دور)', en: ' (beyond your limit)' } : { ur: '', en: '' }
+    return { ur: `${icon} ${lu}: ${s.ur} — ${fmtKmUr(d(s))} ${DIR_UR[compass(bearingDeg(from, s))]}${far.ur} (${age(s).ur})۔`, en: `${icon} ${le}: ${s.en} — ${where(s).en}${far.en} (${age(s).en}).` }
+  }
+  const ur: string[] = [], en: string[] = []
+  const conds = [need.near && ['قریب', 'not far'], need.water && ['پانی', 'water'], need.shade && ['گرمی / سایہ', 'heat / shade']].filter(Boolean) as string[][]
+  ur.push(`میرے ریکارڈ میں${conds.length ? ` (آپ کی شرطیں: ${conds.map(c => c[0]).join('، ')})` : ''}، ${fromUr}:`)
+  en.push(`In my records${conds.length ? ` (your needs: ${conds.map(c => c[1]).join(', ')})` : ''}, ${fromEn}:`)
+  if (need.water || w) {
+    if (w) {
+      const nearest = water[0], skipped = nearest !== w && d(nearest) <= maxM
+      const l = line('💧', skipped ? 'پانی' : 'قریب ترین پانی', skipped ? 'Water' : 'Nearest water', w); ur.push(l.ur); en.push(l.en)
+      // Say why the closer water wasn't picked, so the choice is checkable rather than a black box.
+      if (skipped) { ur[ur.length - 1] += ` (قریب ترین پانی "${nearest.ur}" ${fmtKmUr(d(nearest))} پر ہے، مگر اس کے پاس اچھا چارہ درج نہیں۔)`; en[en.length - 1] += ` (The closest water, "${nearest.en}" at ${fmtKm(d(nearest))}, has no well-rated grazing recorded near it.)` }
+    }
+    else { ur.push('💧 میرے ریکارڈ میں کوئی پانی کی جگہ نہیں۔ پانی ملے تو کہیں: "اس جگہ کو پانی یاد رکھو"۔'); en.push('💧 No water place in my records. When you find one, say "remember this place as water".') }
+  }
+  if (g) { const l = line('🌿', w && distanceM(w, g) <= 1500 ? 'اس پانی کے پاس چارہ' : 'چارہ', w && distanceM(w, g) <= 1500 ? 'Grazing near that water' : 'Grazing', g); ur.push(l.ur); en.push(l.en) }
+  else { ur.push(`🌿 ${fmtKmUr(maxM)} کے اندر کوئی اچھا ریکارڈ شدہ چارہ نہیں۔`); en.push(`🌿 No well-rated grazing recorded within ${fmtKm(maxM)}.`) }
+  if (need.shade) {
+    if (sh) { const l = line('🌳', 'سایہ', 'Shade', sh); ur.push(l.ur); en.push(l.en) }
+    else { ur.push('🌳 قریب کوئی سایہ دار جگہ محفوظ نہیں۔'); en.push('🌳 No shade saved nearby.') }
+  }
+  ur.push('⚠️ یہ آپ کے پرانے ریکارڈ ہیں؛ آج وہاں پانی یا چارہ ہے یا نہیں، CHOTA کو معلوم نہیں۔')
+  en.push("⚠️ These are your past records; CHOTA doesn't know today's water or grass there.")
+  const picked = [w, g, sh].filter(Boolean) as Spot[]
+  // One item per line (💧 / 🌿 / 🌳 / ⚠️): easier to scan outdoors than one paragraph.
+  return A(ur.join('\n'), en.join('\n'), { placeIds: picked.flatMap(s => s.placeId ? [s.placeId] : []), tripIds: picked.flatMap(s => s.tripId ? [s.tripId] : []) }, !!(w || g))
+}
+
 async function run(intent: Intent, text: string, places: Place[]): Promise<Answer> {
   const A = (ur: string, en: string, map?: MapFocus, ok = true): Answer => ({ ur, en, map, ok, intent: intent.kind })
   const f = lastFix()
 
   switch (intent.kind) {
     case 'save_place': return savePlace(intent.name, intent.placeType, f)
+    case 'plan_today': return planToday(intent, places)
     case 'start_trip': {
       if (activeTrip()) return { ...A('سفر پہلے سے جاری ہے۔', 'A trip is already running.'), action: { go: 'trip' } }
       await startTrip()

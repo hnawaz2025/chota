@@ -384,3 +384,12 @@ details { color: var(--ink); }
 .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 /* "did you mean" choices: the one secondary button style */
 .choice { min-height: 64px; border-radius: var(--r-m); border: var(--bw) solid var(--line); background: var(--surface-2); color: var(--ink); padding: 8px var(--pad-in); display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+
+/* multi-line answers (e.g. where-to-go-today) */
+.answer .ur, .answer .en { white-space: pre-line; }
+
+/* Urdu-first input bar: text box on the right, send on the left pointing left; placeholder reads right-to-left
+   (the "…" comes after لکھیں). Typed text still follows its own script via dir="auto". */
+.askbar { direction: rtl; }
+.askbar input:placeholder-shown { direction: rtl; text-align: right; }
+.askbar .go { transform: scaleX(-1); }

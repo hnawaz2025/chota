@@ -160,6 +160,10 @@ step('T2', 'history: ' + rows.join(' | ')); expect('T2', gapRow >= 0, 'history s
 if (gapRow >= 0) { await p.locator('.card.row.trip').nth(gapRow).click(); await p.waitForTimeout(1200) }
 const dotted = await p.locator('path[stroke-dasharray="1 9"]').count(); step('T2', `dotted gap paths: ${dotted}`); expect('T2', dotted >= 1, 'gap drawn dotted'); await shot('T2-gap-dotted')
 
+// P2. "Where should I go today" with constraints, answered from the demo area's records (never a forecast).
+await home(); const plan = await ask('aaj kahan jaun garmi bohot hai zyada dur nhi ja sakhta aur herd ko pani ki bohot zaroorat hai'); step('P2', 'plan: ' + plan); await shot('P2-plan-today')
+expect('P2', plan.includes('میرے ریکارڈ میں') && plan.includes('کاریز') && plan.includes('سایہ') && plan.includes('معلوم نہیں'), 'records-based plan: water + grazing + shade, with caveat')
+
 // T3. Real GPS, then the fix goes stale (clock +1 day without a new fix): answers say "last known", saving is refused.
 // a fresh position (the emulated fix carries the time it was set; the run is now > 2 min, which would make it stale)
 await ctx.setGeolocation({ latitude: 29.5600, longitude: 65.9400, accuracy: 12 })

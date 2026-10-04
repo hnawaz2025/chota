@@ -110,4 +110,9 @@
 {"text": "کس طرف بارش ہوئی ہے", "label": "out_of_scope"}
 {"text": "bakri ko injection laga diya", "label": "out_of_scope"}
 {"text": "میرا موبائل چارج کرو", "label": "out_of_scope"}
-{"text": "سب سے ہری گھاس کس علاقے میں ہوگی", "label": "out_of_scope"}
+{"text": "سب سے ہری گھاس کس علاقے میں ہوگی", "label": "plan_today"}
+{"text": "آج ریوڑ کو کس جگہ لے کر جانا ٹھیک ہوگا", "label": "plan_today"}
+{"text": "jaanwar pyase hain paas mein pani wali jagah batao", "label": "plan_today"}
+{"text": "دوپہر سخت ہے نزدیک کوئی سایہ اور پانی", "label": "plan_today"}
+{"text": "aaj charne ke liye kaunsi taraf behtar", "label": "plan_today"}
+{"text": "تھوڑا ہی چل سکتا ہوں آج کدھر جاؤں", "label": "plan_today"}
