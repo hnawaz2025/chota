@@ -1,7 +1,9 @@
 /** Executes a parsed intent against the local DB and returns a templated Urdu + English answer. */
 import { db, getHome, PLACE_TAGS, type Place, type PlaceType, type Trip } from './db'
 import { now, DAY } from './clock'
-import { parse, signOf, type Intent, type HerdEventParse } from './nlu'
+import { parse, signOf, normalize, speciesQty, parseWhen, findDir, type Intent, type HerdEventParse } from './nlu'
+import { classify, type IntentModel } from './intentModel'
+import type { HerdEventType } from './db'
 import type { Species } from './db'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
 import { lastFix, activeTrip, currentFixState, startTrip, endTrip, type Fix } from './gps'
@@ -17,7 +19,12 @@ export type PendingWrite =
   | { kind: 'reminder'; text: string; dueAt: number; placeId?: number; tag?: string; sourceText: string }
 /** Something the screen should do after the answer: open the trip screen, or ask for the grazing rating. */
 export type UiAction = { go: 'trip' } | { rate: number }
-export interface Answer { ur: string; en: string; map?: MapFocus; ok: boolean; intent: Intent['kind']; pending?: PendingWrite; action?: UiAction }
+/**
+ * ai: the on-device classifier chose this command (rules didn't understand); shown to the herder as a guess.
+ * choices: the classifier wasn't sure; the UI offers these commands as buttons (answer(text, label)).
+ */
+export interface Answer { ur: string; en: string; map?: MapFocus; ok: boolean; intent: Intent['kind']; pending?: PendingWrite; action?: UiAction
+  ai?: { label: string; p: number }; choices?: string[] }
 
 const TYPE_UR = { birth: 'پیدائش', purchase: 'خرید', sale: 'فروخت', death: 'موت', loss: 'گم/چوری', slaughter: 'ذبح', other: '' }
 const TYPE_EN = { birth: 'born', purchase: 'bought', sale: 'sold', death: 'died', loss: 'lost/stolen', slaughter: 'slaughtered', other: '' }
@@ -163,9 +170,85 @@ export async function savePlace(name: string, type: PlaceType, fix: Fix | undefi
     `Saved this spot as "${name}"${tag && type !== 'other' ? ` (${tag.en.toLowerCase()})` : ''}.${dup ? ' (Another place has the same name.)' : ''}${weak.en}`, { placeIds: [id as number] })
 }
 
-export async function answer(text: string): Promise<Answer> {
+// ---------- AI fallback (Test 7): rules first; the classifier only when they don't understand ----------
+/** Below this the classifier is "not sure" and offers choices instead of acting. Chosen on held-out data (ml/evaluate.ts). */
+export const AI_MIN_P = 0.5
+/** Above this an "out of scope" verdict overrides a rules herd match. */
+export const OOS_VETO_P = 0.7
+export const LABEL_UR: Record<string, [string, string, string]> = {
+  home_distance: ['🏠', 'گھر کی دوری', 'distance home'], way_back: ['🏠', 'واپسی کا راستہ', 'way back'],
+  start_trip: ['👣', 'سفر شروع', 'start trip'], end_trip: ['👣', 'سفر ختم', 'end trip'],
+  save_place: ['📍', 'جگہ یاد رکھنا', 'remember a place'], place_distance: ['📍', 'محفوظ جگہ کی دوری', 'distance to a saved place'],
+  good_grazing: ['🌿', 'اچھا چارہ کہاں ملا', 'where grazing was good'], been_here: ['📍', 'کیا یہاں پہلے آیا', 'been here before'],
+  last_trip_dir: ['🧭', 'کسی سمت آخری سفر', 'last trip in a direction'], trips_this_month: ['👣', 'اس مہینے کے سفر', 'trips this month'],
+  last_trip_duration: ['⏱', 'پچھلے سفر کا وقت', 'last trip length'], reminder: ['🔔', 'یاد دہانی لگانا', 'set a reminder'],
+  reminders_list: ['🔔', 'یاد دہانیاں دکھانا', 'show reminders'], herd_confirm: ['🐐', 'ریوڑ کی گنتی درج کرنا', 'record herd count'],
+  herd_status: ['🐐', 'ریوڑ کتنا ہے', 'how many animals'], herd_event_sale: ['🐐', 'جانور بیچے', 'animals sold'],
+  herd_event_purchase: ['🐐', 'جانور خریدے', 'animals bought'], herd_event_birth: ['🐐', 'بچے پیدا ہوئے', 'births'],
+  herd_event_death: ['🐐', 'جانور مرے', 'deaths'], herd_event_loss: ['🐐', 'جانور گم / چوری', 'lost / stolen'],
+  herd_event_slaughter: ['🐐', 'جانور ذبح', 'slaughtered'],
+}
+let modelP: Promise<IntentModel | undefined> | undefined
+const loadModel = () => modelP ??= fetch(`${import.meta.env.BASE_URL}data/intent-model.json`).then(r => r.ok ? r.json() : undefined).catch(() => undefined)
+
+/** Turn a classifier label into a command, using the rules' extractors for the details (species, numbers, time, direction). */
+async function fromLabel(label: string, text: string, places: Place[]): Promise<Answer> {
+  const toks = normalize(text)
+  const need = (ur: string, en: string): Answer => ({ ur, en, ok: false, intent: 'unknown' })
+  const go = (i: Intent) => run(i, text, places)
+  if (label.startsWith('herd_event_')) {
+    const sq = speciesQty(toks)
+    if (!sq.length) return need('کون سا جانور اور کتنے؟ مثلاً: "دو بکریاں بیچیں"', 'Which animal, and how many? e.g. "sold two goats"')
+    return go({ kind: 'herd_event', events: sq.map(x => ({ species: x.species, type: label.slice(11) as HerdEventType, qty: x.qty, qtyAssumed: x.qtyAssumed })) })
+  }
+  switch (label) {
+    case 'herd_confirm': {
+      const counts = speciesQty(toks).filter(x => !x.qtyAssumed).map(x => ({ species: x.species, count: x.qty }))
+      return counts.length ? go({ kind: 'herd_confirm', counts }) : need('کتنے جانور؟ مثلاً: "میرے پاس 40 بکریاں ہیں"', 'How many animals? e.g. "I have 40 goats"')
+    }
+    case 'reminder': { const w = parseWhen(' ' + toks.join(' ') + ' ', toks, now()); return go({ kind: 'reminder', text: text.trim(), dueAt: w.at, assumed: w.assumed }) }
+    case 'last_trip_dir': {
+      const dir = findDir(' ' + toks.join(' ') + ' ')
+      return dir ? go({ kind: 'last_trip_dir', dir }) : need('کس سمت؟ مثلاً: "پچھلی بار شمال کب گیا تھا"', 'Which direction? e.g. "when did I last go north"')
+    }
+    case 'place_distance': {
+      const hit = places.filter(p => normalize(p.name).some(w => toks.includes(w))).at(-1)
+      return hit ? go({ kind: 'place_distance', name: hit.name })
+        : need(places.length ? `کون سی جگہ؟ محفوظ جگہیں: ${places.map(p => p.name).join('، ')}` : 'ابھی کوئی جگہ محفوظ نہیں۔', places.length ? 'Which place? Saved places are listed above.' : 'No places saved yet.')
+    }
+    case 'save_place': return need('جگہ یاد رکھنے کے لیے کہیں: "اس جگہ کو پرانا چارہ یاد رکھو"، یا سفر میں 📍 دبائیں۔', 'To save a place say "remember this place as …", or tap 📍 on the trip screen.')
+    default: return go({ kind: label } as Intent)
+  }
+}
+
+export async function answer(text: string, forced?: string): Promise<Answer> {
   const places = await db.places.toArray()
+  if (forced) return fromLabel(forced, text, places)          // herder picked one of the offered choices
   const intent = parse(text, now(), places.map(p => p.name))
+  const oos = (p: number): Answer => ({ ur: 'یہ CHOTA کا کام نہیں: یہ صرف آپ کے سفر، جگہوں، یاد دہانیوں اور ریوڑ کی گنتی کا ریکارڈ رکھتا ہے۔ جانوروں کی بیماری، قیمتیں یا موسم نہیں بتاتا۔',
+    en: 'That is outside CHOTA: it keeps your trips, places, reminders and herd count. It does not advise on animal health, prices or weather.', ok: false, intent: 'unknown', ai: { label: 'out_of_scope', p } })
+  if (intent.kind !== 'unknown') {
+    // The rules' herd matching fires on any animal word ("بکری کو بخار ہے"); a very confident "out of scope" overrides it.
+    if (intent.kind === 'herd_status' || intent.kind === 'herd_confirm' || intent.kind === 'herd_event') {
+      const m = await loadModel(), top = m && classify(m, text)[0]
+      if (top && top.label === 'out_of_scope' && top.p >= OOS_VETO_P) return oos(top.p)
+    }
+    return run(intent, text, places)
+  }
+  const m = await loadModel()
+  if (!m) return run(intent, text, places)
+  const g = classify(m, text), top = g[0]
+  if (top.p >= AI_MIN_P) {
+    if (top.label === 'out_of_scope') return oos(top.p)
+    const a = await fromLabel(top.label, text, places), [, ur, en] = LABEL_UR[top.label]
+    // A guess is shown as a guess; anything that changes records is read back for ✓ anyway.
+    return { ...a, ai: { label: top.label, p: top.p }, ...(a.pending ? {} : { ur: `میں نے سمجھا: ${ur}۔ ${a.ur}`, en: `I understood: ${en}. ${a.en}` }) }
+  }
+  const choices = g.filter(x => x.label !== 'out_of_scope').slice(0, 2).map(x => x.label)
+  return { ur: 'پکا نہیں سمجھا۔ کیا آپ کا مطلب یہ ہے؟', en: 'Not sure I understood. Did you mean one of these?', ok: false, intent: 'unknown', choices, ai: { label: top.label, p: top.p } }
+}
+
+async function run(intent: Intent, text: string, places: Place[]): Promise<Answer> {
   const A = (ur: string, en: string, map?: MapFocus, ok = true): Answer => ({ ur, en, map, ok, intent: intent.kind })
   const f = lastFix()
 

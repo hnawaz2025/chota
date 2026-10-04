@@ -212,7 +212,7 @@ const DELTA_SIGN: Record<HerdEventType, number> = { birth: 1, purchase: 1, sale:
 export const signOf = (t: HerdEventType) => DELTA_SIGN[t]
 
 /** Species mentions with their quantity (number just before the noun, else 1, flagged as assumed). */
-function speciesQty(toks: string[]) {
+export function speciesQty(toks: string[]) {
   const nums = parseNumbers(toks)
   const res: { species: Species; qty: number; qtyAssumed: boolean; idx: number }[] = []
   toks.forEach((t, i) => {
@@ -274,7 +274,9 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
     const counts = sq.filter(s => nums.some(n => n.end === s.idx)).map(s => ({ species: s.species, count: s.qty }))
     if (counts.length) return { kind: 'herd_confirm', counts }
   }
-  if (has(text, 'کتنی', 'کتنے', 'kitni', 'kitne', 'how many', 'گنتی', 'herd', 'ریوڑ')) return { kind: 'herd_status' }
+  // Herd question only if it is about the herd: "کتنے" alone is also "how many trips / hours / km" (Test 7).
+  const herdWord = sq.length > 0 || has(text, 'گنتی', 'ریوڑ', 'جانور', 'ginti', 'rewar', 'janwar', 'herd', 'animals')
+  if (herdWord && (question || has(text, 'بتاؤ', 'batao', 'دکھاؤ', 'dikhao'))) return { kind: 'herd_status' }
   if (has(text, 'یاد دہانی', 'reminder', 'یاد')) return { kind: 'reminders_list' }
   return { kind: 'unknown' }
 }

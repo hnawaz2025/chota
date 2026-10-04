@@ -1,0 +1,302 @@
+[
+{
+"text": "ابھی ہم گھر سے کتنا ہٹ کر ہیں",
+"label": "home_distance",
+"p": 0.812
+},
+{
+"text": "گھر جانے کے لیے کس طرف منہ کروں",
+"label": "home_distance",
+"p": 0.7368
+},
+{
+"text": "apna dera yahan se kitne fasle par hai",
+"label": "home_distance",
+"p": 0.338
+},
+{
+"text": "گھر والی سمت کون سی ہے",
+"label": "home_distance",
+"p": 0.8757
+},
+{
+"text": "واپس گاؤں کتنے میل ہے",
+"label": "way_back",
+"p": 0.3589
+},
+{
+"text": "جدھر سے آئے تھے وہی رستہ چاہیے",
+"label": "way_back",
+"p": 0.8445
+},
+{
+"text": "mujhe wohi rasta dikhao jis se aaya",
+"label": "way_back",
+"p": 0.9357
+},
+{
+"text": "لوٹنے کا راستہ بتا دو",
+"label": "way_back",
+"p": 0.9447
+},
+{
+"text": "میں بھٹک گیا ہوں واپس کیسے نکلوں",
+"label": "way_back",
+"p": 0.5065
+},
+{
+"text": "پیچھے والا راستہ نقشے پر دکھاؤ",
+"label": "way_back",
+"p": 0.9722
+},
+{
+"text": "ریوڑ کو باہر لے جا رہا ہوں ریکارڈ شروع کر دو",
+"label": "start_trip",
+"p": 0.9972
+},
+{
+"text": "جانوروں کو چرانے نکل پڑا",
+"label": "start_trip",
+"p": 0.5199
+},
+{
+"text": "aaj ka chakkar shuru karte hain",
+"label": "start_trip",
+"p": 0.9086
+},
+{
+"text": "اب پہاڑ کی طرف جا رہے ہیں سفر چالو کرو",
+"label": "start_trip",
+"p": 0.5871
+},
+{
+"text": "نکلنے کا وقت ہو گیا ٹرپ چلاؤ",
+"label": "end_trip",
+"p": 0.309
+},
+{
+"text": "واپس ڈیرے پہنچ گئے سفر روک دو",
+"label": "end_trip",
+"p": 0.949
+},
+{
+"text": "aaj ka kaam khatam trip rok do",
+"label": "end_trip",
+"p": 0.7974
+},
+{
+"text": "ہم آ گئے ہیں ریکارڈنگ ختم",
+"label": "end_trip",
+"p": 0.8625
+},
+{
+"text": "جانور باڑے میں آ گئے",
+"label": "herd_event_sale",
+"p": 0.5917
+},
+{
+"text": "چکر پورا ہو گیا بند کر دو",
+"label": "end_trip",
+"p": 0.9561
+},
+{
+"text": "یہ والی جگہ پانی والا نالہ نام سے رکھ لو",
+"label": "save_place",
+"p": 0.9587
+},
+{
+"text": "is jaga ko achi ghaas wali jagah yaad karlo",
+"label": "save_place",
+"p": 0.7021
+},
+{
+"text": "یہاں کنواں ہے اس جگہ کو محفوظ کرو",
+"label": "save_place",
+"p": 0.9708
+},
+{
+"text": "اس مقام کو بڑا پتھر کہہ کر یاد رکھنا",
+"label": "save_place",
+"p": 0.9067
+},
+{
+"text": "یہ جگہ میرے لیے نشان لگا دو",
+"label": "save_place",
+"p": 0.4582
+},
+{
+"text": "کالا پہاڑ یہاں سے کتنے فاصلے پر ہے",
+"label": "place_distance",
+"p": 0.8673
+},
+{
+"text": "tubewell yahan se kitna door",
+"label": "place_distance",
+"p": 0.6517
+},
+{
+"text": "چشمہ کس جانب ہے",
+"label": "place_distance",
+"p": 0.9212
+},
+{
+"text": "قادر کا کنواں کتنا دور رہ گیا",
+"label": "place_distance",
+"p": 0.8304
+},
+{
+"text": "نالہ کدھر کو ہے",
+"label": "place_distance",
+"p": 0.9268
+},
+{
+"text": "کس جگہ جانوروں نے پیٹ بھر کر کھایا تھا",
+"label": "out_of_scope",
+"p": 0.2568
+},
+{
+"text": "achi charagah ka pata batao",
+"label": "save_place",
+"p": 0.169
+},
+{
+"text": "گھاس زیادہ کہاں تھی پچھلی دفعہ",
+"label": "good_grazing",
+"p": 0.6318
+},
+{
+"text": "کون سی طرف چارہ بہتر ملا تھا",
+"label": "good_grazing",
+"p": 0.6835
+},
+{
+"text": "جہاں اچھی چرائی ہوئی تھی وہ دکھاؤ",
+"label": "good_grazing",
+"p": 0.9901
+},
+{
+"text": "کیا اس جگہ میرا پہلے آنا ہوا ہے",
+"label": "been_here",
+"p": 0.7659
+},
+{
+"text": "pehle kabhi idhar aaya hoon",
+"label": "been_here",
+"p": 0.8617
+},
+{
+"text": "یہاں میں کب آیا تھا آخری بار",
+"label": "last_trip_dir",
+"p": 0.7295
+},
+{
+"text": "یہ مقام پہلے بھی ریکارڈ ہوا ہے",
+"label": "been_here",
+"p": 0.6625
+},
+{
+"text": "کیا ہم یہاں سے پہلے گزرے ہیں",
+"label": "been_here",
+"p": 0.9032
+},
+{
+"text": "آج تین بکریاں بیچیں پینتالیس ہزار میں",
+"label": "herd_confirm",
+"p": 0.4951
+},
+{
+"text": "کل رات ایک بکری نے دو بچے دیے",
+"label": "herd_event_birth",
+"p": 0.7169
+},
+{
+"text": "ایک بھیڑ مر گئی",
+"label": "herd_event_death",
+"p": 0.9805
+},
+{
+"text": "بھوسے کی دس بوریاں لیں اٹھارہ ہزار روپے ادھار پر",
+"label": "out_of_scope",
+"p": 0.8184
+},
+{
+"text": "سب جانوروں کو کیڑوں کی دوائی دی",
+"label": "out_of_scope",
+"p": 0.9659
+},
+{
+"text": "کل ملا کے 42 بکریاں اور 17 بھیڑیں ہیں",
+"label": "herd_confirm",
+"p": 0.9617
+},
+{
+"text": "دو دنبے بیچے بیس بیس ہزار کے",
+"label": "herd_event_sale",
+"p": 0.8449
+},
+{
+"text": "پرسوں منڈی سے ایک بکرا خریدا بائیس ہزار کا",
+"label": "herd_event_purchase",
+"p": 0.725
+},
+{
+"text": "اگلے ہفتے سب کو پی پی آر کا ٹیکہ لگوانا ہے یاد دلانا",
+"label": "reminder",
+"p": 0.7207
+},
+{
+"text": "پانی کا ٹینکر منگوایا تین ہزار پانچ سو",
+"label": "reminder",
+"p": 0.2706
+},
+{
+"text": "بھیڑیا ایک بکری لے گیا",
+"label": "herd_event_loss",
+"p": 0.9691
+},
+{
+"text": "دو دن پہلے ایک میمنا مر گیا تھا اور آج بیمار بکری کو انجکشن لگوایا",
+"label": "herd_event_death",
+"p": 0.6305
+},
+{
+"text": "چرانے لے کر جا رہا ہوں تین دن بعد واپس آؤں گا",
+"label": "start_trip",
+"p": 0.804
+},
+{
+"text": "واپس آ گیا ہوں سب جانور ٹھیک ہیں",
+"label": "end_trip",
+"p": 0.753
+},
+{
+"text": "ڈیڑھ لاکھ میں اونٹ بیچا",
+"label": "herd_event_sale",
+"p": 0.6941
+},
+{
+"text": "عید کے لیے ایک دنبہ ذبح کیا",
+"label": "herd_event_slaughter",
+"p": 0.9816
+},
+{
+"text": "دکاندار کو دس ہزار ادھار واپس کیے",
+"label": "out_of_scope",
+"p": 0.8525
+},
+{
+"text": "بکری بیچی",
+"label": "herd_event_sale",
+"p": 0.8695
+},
+{
+"text": "آج پانچ میمنے پیدا ہوئے",
+"label": "herd_event_birth",
+"p": 0.9408
+},
+{
+"text": "کھل اور دانہ لیا بارہ ہزار کا",
+"label": "herd_event_purchase",
+"p": 0.222
+}
+]
