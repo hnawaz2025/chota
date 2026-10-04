@@ -192,3 +192,10 @@ STATUS.md             build log
   [Claude Code](https://claude.com/claude-code) as my coding assistant.
 
 The demo data is fictional and clearly labelled in the app.
+
+---
+
+## License
+
+The code is released under the [MIT License](LICENSE). Bundled data keeps its own license: Sentinel-2 imagery
+(Copernicus open data terms), GeoNames (CC BY 4.0), geoBoundaries, and Noto Nastaliq Urdu (SIL Open Font License).
