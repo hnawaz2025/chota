@@ -60,9 +60,13 @@ const nRem = () => p.evaluate(() => new Promise(r => { const q = indexedDB.open(
 // R1. A rejected reminder read-back writes nothing.
 const r0 = await nRem(); const hr = await ask('پرسوں شام پانی بھرنا ہے'); step('R1', 'read-back: ' + hr)
 await click('نہیں، غلط ہے'); await p.waitForTimeout(400); expect('R1', hr.includes('میں نے سمجھا') && await nRem() === r0, 'rejected reminder not saved')
-// 10. Reminder: read back, saved on ✓
+// 10. Reminder: "کل صبح" is read back as tomorrow 08:00 (rejected here), then a reminder that is due before the +1 day
+// jump at any time of day is saved on ✓. ("tomorrow 8:00" + 1 day only fires if the app clock is past 08:00, and the demo
+// walk moves the app clock ~1.6 h, so a late-evening run would land before 08:00.)
 const h10 = await ask('کل صبح ریوڑ کی گنتی کرنا یاد دلانا'); step(10, 'reminder read-back: ' + h10)
 expect(10, h10.includes('کل صبح 8 بجے') && await nRem() === r0, 'reminder tomorrow 8am read back, not yet saved')
+await click('نہیں، غلط ہے'); await p.waitForTimeout(400)
+const h10b = await ask('23 گھنٹے بعد ریوڑ کی گنتی کرنا یاد دلانا'); step('10b', 'reminder read-back: ' + h10b)
 await click('ہاں، درج کریں'); await p.waitForTimeout(500); expect(10, await nRem() === r0 + 1, 'reminder saved after yes')
 // 11. Trigger: jump +1 day and reload (scheduler runs on start and every 15 s)
 await settings(); await click('+1 days'); await p.reload(); await p.waitForSelector('.modal', { timeout: 20000 })

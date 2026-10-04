@@ -68,7 +68,8 @@ export function isForgotten(startedAt: number, lastPointT: number | undefined, n
 // ---------- wording ----------
 export function spanUr(ms: number) {
   const m = Math.round(ms / 60000)
-  return m < 60 ? `${m} منٹ` : m < 48 * 60 ? `${Math.round(m / 60)} گھنٹے` : `${Math.round(m / 1440)} دن`
+  const h = Math.round(m / 60)
+  return m < 60 ? `${m} منٹ` : m < 48 * 60 ? `${h} ${h === 1 ? 'گھنٹہ' : 'گھنٹے'}` : `${Math.round(m / 1440)} دن`
 }
 export function spanEn(ms: number) {
   const m = Math.round(ms / 60000)

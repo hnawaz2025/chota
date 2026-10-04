@@ -171,7 +171,7 @@ def gen(per_label=260):
             t = re.sub(r'\s+', ' ', S(PRE) + t + S(POST)).strip()
             if random.random() < 0.3: t = noisy(t)
             seen.add(t)
-        rows += [{'text': t, 'label': label} for t in seen]
+        rows += [{'text': t, 'label': label} for t in sorted(seen)]   # sorted: set order varies per run (hash seed)
     random.shuffle(rows)
     return rows
 

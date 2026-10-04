@@ -94,7 +94,8 @@ export function dueUr(t: number) {
   const d = new Date(t), today = new Date(now()); today.setHours(0, 0, 0, 0)
   const days = Math.round((new Date(t).setHours(0, 0, 0, 0) - today.getTime()) / DAY)
   const day = days === 0 ? 'آج' : days === 1 ? 'کل' : days === 2 ? 'پرسوں' : `${days} دن بعد`
-  const h = d.getHours(), part = h < 12 ? 'صبح' : h < 16 ? 'دوپہر' : h < 19 ? 'شام' : 'رات'
+  // 00:00–03:59 is still night in Urdu ("رات 12 بجے"), not morning.
+  const h = d.getHours(), part = h < 4 ? 'رات' : h < 12 ? 'صبح' : h < 16 ? 'دوپہر' : h < 19 ? 'شام' : 'رات'
   return `${day} ${part} ${h % 12 || 12} بجے`
 }
 export function dueEn(t: number) {
