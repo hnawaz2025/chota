@@ -174,8 +174,14 @@ await p.waitForTimeout(500); await dismissReminders()
 await dismissReminders(); await home(); await p.fill('.voice.big .askbar input', 'safar shuru karo'); await p.press('.voice.big .askbar input', 'Enter'); await p.waitForTimeout(1200)
 await p.getByText('200 m/s').click(); await p.waitForTimeout(1500)
 const tv = async q => { await p.fill('.trip-voice .askbar input', q); await p.press('.trip-voice .askbar input', 'Enter'); await p.waitForTimeout(900); return (await p.textContent('.trip-voice .answer')).trim() }
-const s1a = await tv('is jagah ko pani yaad rakho'); await p.waitForTimeout(1500); const s1b = await tv('is jagah ko saya yaad rakho')
-step('S1', `water: ${s1a.slice(0, 60)} | shade: ${s1b.slice(0, 60)}`); expect('S1', s1a.includes('💧') && s1b.includes('🌳'), 'water and shade places saved by voice')
+const s1a = await tv('اس جگہ کا نام چشمہ رکھیں'); await p.waitForTimeout(1500); const s1b = await tv('یہاں سایہ ہے یاد رکھ لیں')
+step('S1', `water: ${s1a.slice(0, 60)} | shade: ${s1b.slice(0, 60)}`); expect('S1', s1a.includes('💧') && s1a.includes('چشمہ') && s1b.includes('🌳'), 'water and shade places saved by voice (polite forms)')
+// no name said → the naming window opens right there (spot frozen); name it and save
+await p.waitForTimeout(800); await tv('یہ جگہ یاد رکھ لو'); await p.waitForTimeout(500)
+const s1n = (await p.locator('.modal').count()) ? await p.textContent('.modal') : ''; step('S1', 'unnamed → ' + s1n.slice(0, 80))
+expect('S1', s1n.includes('اس جگہ کا نام'), 'no name said → naming window opens')
+if (s1n) { await p.fill('.modal .askbar input', 'سفید پتھر'); await p.locator('.modal .big-btn').click(); await p.waitForTimeout(600) }
+expect('S1', (await p.textContent('.trip-voice .answer')).includes('سفید پتھر'), 'named place saved from the naming window')
 const s1c = await tv('wapsi par Karim chacha ki 4 bakriyan unke ghar chhodni hain yaad dilana'); step('S1', 'reminder read-back: ' + s1c)
 expect('S1', s1c.includes('سفر ختم ہونے پر'), 'reminder tied to trip end, read back'); await click('ہاں، درج کریں'); await p.waitForTimeout(400)
 const s1d = await tv('wapas ka rasta dikhao'); expect('S1', s1d.includes('ریکارڈ شدہ راستہ'), 'way back = own recorded trail')

@@ -71,7 +71,8 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
     m.on('zoomend', syncVillages); syncVillages()
     data.current = L.layerGroup().addTo(m)
     setReady(true)
-    return () => { m.remove(); map.current = undefined }
+    // Stop any running pan/zoom before removing the map, or its animation frame fires on a removed map (_leaflet_pos).
+    return () => { m.stop(); m.off(); m.remove(); map.current = undefined }
   }, [])
 
   // data layers
@@ -98,8 +99,9 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
       if (hi) fitPts.push([p.lat, p.lon])
     }
     if (allTrips) (trips ?? []).forEach(({ pts }) => pts.forEach(p => fitPts.push([p.lat, p.lon])))
-    if (fitPts.length) m.fitBounds(L.latLngBounds(fitPts).pad(allTrips ? 0.06 : 0.25), { maxZoom: 15 })
-    else if (fix) m.setView([fix.lat, fix.lon], Math.max(m.getZoom(), 13))
+    // Instant moves (no animation): smoother on cheap phones, and nothing left running if the screen changes.
+    if (fitPts.length) m.fitBounds(L.latLngBounds(fitPts).pad(allTrips ? 0.06 : 0.25), { maxZoom: 15, animate: false })
+    else if (fix) m.setView([fix.lat, fix.lon], Math.max(m.getZoom(), 13), { animate: false })
     // Deliberately not on every fix: re-fitting the map each second would fight the herder's own panning.
     // Position-following lines are in the effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,7 +125,7 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
     else me.current.setLatLng([fix.lat, fix.lon])
     // Grey = last known position, not current.
     me.current.setStyle({ fillColor: fixState(fix, now()).state === 'stale' ? '#9e9e9e' : '#1a73e8' })
-    if (tid && !focus) m.panTo([fix.lat, fix.lon], { animate: true })
+    if (tid && !focus) m.panTo([fix.lat, fix.lon], { animate: false })
   }, [ready, fix, tid, focus, tick])
 
   return <div ref={el} className={className} />

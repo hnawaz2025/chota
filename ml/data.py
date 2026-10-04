@@ -145,9 +145,52 @@ T = {
   'hello', 'thank you', 'what is the weather'],
 }
 
+
+# ---------- round 2 (stronger AI): polite forms, more verbs, code-mixing; worded differently from every test set ----------
+EXTRA = {
+ 'save_place': [
+  'اس جگہ کو {place} کا نام دے دو', 'یہ جگہ {place} کے نام سے یاد کر لیں', 'اس مقام کا نام {place} رکھ دیں', 'یہاں {place} ہے، یہ جگہ محفوظ کریں',
+  'یہ والی جگہ یاد رکھیں', 'اس جگہ پر نشان لگا دو', 'یہاں کی جگہ نوٹ کر لیں', 'اس جگہ کو {place} لکھ دو', 'یہ جگہ میرے لیے محفوظ کر دیں',
+  'اس جگہ کا نام دو {place}', '{place} والی جگہ ہے یہ، یاد رکھ لو', 'یہاں ایک {place} ہے اسے محفوظ کرو',
+  'is jagah ka naam {placer} rakh do', 'yeh jagah {placer} ke naam se save kar do', 'is jagah ko mark kar do', 'yahan {placer} hai is jagah ko save karo',
+  'is jagah ko yaad kar lo', 'is jagah pe nishan laga do', 'is spot ko save karo', 'yeh wali jagah yaad rakhna please',
+  'save this spot as {placer}', 'name this place {placer}', 'remember this place, there is {placer} here', 'pin this location'],
+ 'reminders_list': [
+  'میری یاد دہانیاں سنائیں', 'یاد دہانیاں کیا کیا ہیں', 'آج کے کام کون سے ہیں', 'جو کام یاد کرانے تھے وہ بتاؤ', 'کون کون سی یاد دہانی لگی ہے',
+  'yaad dahaniyan sunao', 'kaun kaun se kaam yaad karane hain', 'meri reminders dikhao', 'list my reminders'],
+ 'reminder': [
+  '{when} {time} مجھے یاد کرا دیں کہ {task} ہے', '{when} {task} کی یاد دہانی لگائیں', 'بھولنا نہیں {when} {task}', '{when} {time} {task} یاد دلا دیں',
+  '{whenr} {timer} yaad kara dena {taskr}', '{whenr} {taskr} ki reminder laga do', 'remind me {whenen} please, {tasken}'],
+ 'home_distance': ['گھر کتنا فاصلہ ہے بتائیں', 'میرا ڈیرہ کس سمت میں ہے', 'گاؤں کس طرف رہ گیا', 'ghar ka fasla batao', 'dera kis simt hai', 'how far am i from home'],
+ 'way_back': ['واپسی کا راستہ دکھائیں', 'جس راستے آئے اسی سے واپس لے چلیں', 'گھر واپسی کا رستہ بتائیں', 'wapsi ka rasta dikha do', 'take me back the way i came'],
+ 'start_trip': ['سفر شروع کریں', 'آج کا چکر شروع کرو', 'ریوڑ لے کر نکل رہا ہوں ریکارڈ کرو', 'safar shuru kar do', 'aaj ka chakkar shuru', 'begin recording the trip'],
+ 'end_trip': ['سفر ختم کریں', 'میں ڈیرے پر پہنچ گیا ہوں', 'آج کا چکر ختم', 'safar khatam kar do', 'ghar aa gaya hoon', 'i am back home, end the trip'],
+ 'plan_today': ['آج ریوڑ کس طرف لے جاؤں بتائیں', 'کہاں چرانا ٹھیک رہے گا', 'پانی والی جگہ کون سی قریب ہے', 'garmi hai kidhar jaun', 'aaj kis jagah charaun', 'where should i take the herd today'],
+ 'good_grazing': ['اچھی گھاس کس جگہ ملی تھی بتائیں', 'پچھلی دفعہ چارہ کہاں اچھا تھا', 'achi chara wali jagah kaun si thi', 'where was the grass good'],
+ 'place_distance': ['{place} یہاں سے کتنی دور ہے بتائیں', '{place} کی سمت کیا ہے', '{placer} kitna door hai yahan se', 'which way is {placer}'],
+ 'been_here': ['کیا میں اس جگہ پہلے آ چکا ہوں', 'یہاں پہلے کبھی آیا تھا', 'kya main yahan pehle aa chuka hoon', 'was i here before'],
+ 'last_trip_dir': ['{dir} کی طرف پچھلی دفعہ کب گیا', 'آخری بار {dir} کب گئے تھے', '{dirr} mein aakhri dafa kab gaya', 'last time i went {diren}'],
+ 'trips_this_month': ['اس مہینے کتنی دفعہ چرانے گیا', 'یہ مہینہ کتنے چکر لگے', 'is mahine kitni dafa gaya', 'trips this month'],
+ 'last_trip_duration': ['پچھلا چکر کتنے گھنٹے کا تھا', 'آخری سفر میں کتنی دیر لگی', 'pichli dafa kitne ghante laga', 'how many hours was my last trip'],
+ 'herd_confirm': ['ابھی گنا تو {n} {sp} ہیں', 'میری {sp} {n} ہیں', 'گنتی کر لی {n} {sp}', 'abhi gina {nr} {spr} hain', 'counted {nr} {spen} today'],
+ 'herd_status': ['میری {sp} کتنی ہیں بتائیں', 'ریوڑ میں کتنے جانور ہیں', 'meri {spr} kitni hain', 'how many animals are there'],
+ 'herd_event_sale': ['{n} {sp} بیچ آیا', 'آج {sp1} فروخت کر دی', '{nr} {spr} bech aaya', 'i sold {nr} {spen} today'],
+ 'herd_event_purchase': ['{n} {sp} خرید لیں', 'آج نئی {sp1} لے آیا', '{nr} {spr} khareed li', 'bought {nr} {spen} today'],
+ 'herd_event_birth': ['{sp1} نے بچہ جنا', 'آج {n} بچے ہوئے', '{sp1r} ne bachay diye', '{nr} lambs were born'],
+ 'herd_event_death': ['ایک {sp1} مر گئی آج', '{n} {sp} مر گئے', '{sp1r} mar gayi aaj', '{nr} {spen} died'],
+ 'herd_event_loss': ['{sp1} گم ہو گئی', '{n} {sp} نہیں ملے', '{sp1r} kho gayi', '{nr} {spen} went missing'],
+ 'herd_event_slaughter': ['{sp1} ذبح کر دی', 'آج {sp1} قربان کی', '{sp1r} zibah kar di', 'we slaughtered a {sp1r}'],
+ 'out_of_scope': ['آج موسم کیسا رہے گا', '{sp1} کو دوائی کون سی دوں', 'منڈی میں {sp1} کتنے کی بکے گی', 'mausam kaisa hai', '{sp1r} ko kya dawai doon', 'how much is a goat in the market', 'tell me a joke'],
+}
+EXTRA['herd_event_loss'] += ['{sp1} لاپتہ ہو گئی', '{n} {sp} لاپتہ ہیں', '{sp1} ڈھونڈنے سے بھی نہیں ملی', '{sp1r} laapata hai', '{nr} {spr} nahi mil rahi', 'a {sp1r} has gone missing']
+EXTRA['herd_event_sale'] += ['{n} {sp} بک گئیں', 'منڈی میں {sp1} بک گیا', '{nr} {spr} bik gaye', '{sp1r} mandi mein bik gaya']
+EXTRA['herd_event_purchase'] += ['{sp1} مول لے لی', '{n} {sp} مول لیے', '{sp1r} mol le liya', '{nr} {spr} mol liye']
+EXTRA['reminders_list'] += ['کون سی یاد دہانیاں لگی ہیں', 'آگے کیا کیا یاد دلانا ہے', 'show me my reminders please', 'reminders kaun si hain']
+for k, v in EXTRA.items(): T[k] += v
+
 # ---------- augmentation ----------
-PRE = ['', '', '', 'بھائی ', 'یار ', 'ذرا ', 'اچھا ', 'چھوٹا ', 'سنو ', 'chota ', 'yaar ', 'acha ']
-POST = ['', '', '', ' ؟', ' بتاؤ', ' جی', ' نا', ' please', ' yaar']
+PRE = ['', '', '', 'بھائی ', 'یار ', 'ذرا ', 'اچھا ', 'چھوٹا ', 'سنو ', 'chota ', 'yaar ', 'acha ', 'مجھے بتاؤ ', 'mujhe batao ', 'please ', 'جی ']
+POST = ['', '', '', ' ؟', ' بتاؤ', ' بتائیں', ' جی', ' نا', ' please', ' yaar', ' کریں', ' دیں']
 CONFUSE = [('آ', 'ا'), ('ڑ', 'ر'), ('ی', 'ے'), ('ے', 'ی'), ('ہ', 'ھ'), ('ز', 'ذ'), ('س', 'ص'), ('ت', 'ط'), ('ح', 'ہ'), ('ک', 'ق'), ('ا', 'آ'), ('ں', 'ن'), ('ئ', 'ی'),
            ('aa', 'a'), ('ee', 'i'), ('oo', 'u'), ('kh', 'k'), ('h', ''), ('i', 'e')]
 
@@ -165,7 +208,7 @@ def noisy(t):
         i = random.randrange(1, len(t) - 1); t = t[:i] + t[i + 1:]
     return t
 
-def gen(per_label=260):
+def gen(per_label=400):
     rows = []
     for label, temps in T.items():
         seen = set()

@@ -2,301 +2,301 @@
 {
 "text": "ابھی ہم گھر سے کتنا ہٹ کر ہیں",
 "label": "home_distance",
-"p": 0.8029
+"p": 0.6448
 },
 {
 "text": "گھر جانے کے لیے کس طرف منہ کروں",
 "label": "home_distance",
-"p": 0.6747
+"p": 0.6367
 },
 {
 "text": "apna dera yahan se kitne fasle par hai",
 "label": "home_distance",
-"p": 0.3048
+"p": 0.6068
 },
 {
 "text": "گھر والی سمت کون سی ہے",
 "label": "home_distance",
-"p": 0.8928
+"p": 0.7895
 },
 {
 "text": "واپس گاؤں کتنے میل ہے",
-"label": "way_back",
-"p": 0.3533
+"label": "home_distance",
+"p": 0.3018
 },
 {
 "text": "جدھر سے آئے تھے وہی رستہ چاہیے",
 "label": "way_back",
-"p": 0.8818
+"p": 0.8492
 },
 {
 "text": "mujhe wohi rasta dikhao jis se aaya",
 "label": "way_back",
-"p": 0.9352
+"p": 0.9457
 },
 {
 "text": "لوٹنے کا راستہ بتا دو",
 "label": "way_back",
-"p": 0.9341
+"p": 0.8757
 },
 {
 "text": "میں بھٹک گیا ہوں واپس کیسے نکلوں",
 "label": "way_back",
-"p": 0.5437
+"p": 0.5226
 },
 {
 "text": "پیچھے والا راستہ نقشے پر دکھاؤ",
 "label": "way_back",
-"p": 0.975
+"p": 0.9523
 },
 {
 "text": "ریوڑ کو باہر لے جا رہا ہوں ریکارڈ شروع کر دو",
 "label": "start_trip",
-"p": 0.9969
+"p": 0.9965
 },
 {
 "text": "جانوروں کو چرانے نکل پڑا",
 "label": "start_trip",
-"p": 0.5363
+"p": 0.4622
 },
 {
 "text": "aaj ka chakkar shuru karte hain",
 "label": "start_trip",
-"p": 0.9121
+"p": 0.9659
 },
 {
 "text": "اب پہاڑ کی طرف جا رہے ہیں سفر چالو کرو",
 "label": "start_trip",
-"p": 0.5442
+"p": 0.4845
 },
 {
 "text": "نکلنے کا وقت ہو گیا ٹرپ چلاؤ",
-"label": "end_trip",
-"p": 0.3083
+"label": "out_of_scope",
+"p": 0.3022
 },
 {
 "text": "واپس ڈیرے پہنچ گئے سفر روک دو",
 "label": "end_trip",
-"p": 0.9469
+"p": 0.9555
 },
 {
 "text": "aaj ka kaam khatam trip rok do",
 "label": "end_trip",
-"p": 0.7942
+"p": 0.8853
 },
 {
 "text": "ہم آ گئے ہیں ریکارڈنگ ختم",
 "label": "end_trip",
-"p": 0.8404
+"p": 0.8957
 },
 {
 "text": "جانور باڑے میں آ گئے",
 "label": "herd_event_sale",
-"p": 0.5653
+"p": 0.3134
 },
 {
 "text": "چکر پورا ہو گیا بند کر دو",
 "label": "end_trip",
-"p": 0.9637
+"p": 0.9371
 },
 {
 "text": "یہ والی جگہ پانی والا نالہ نام سے رکھ لو",
 "label": "save_place",
-"p": 0.9293
+"p": 0.9514
 },
 {
 "text": "is jaga ko achi ghaas wali jagah yaad karlo",
 "label": "save_place",
-"p": 0.5559
+"p": 0.7905
 },
 {
 "text": "یہاں کنواں ہے اس جگہ کو محفوظ کرو",
 "label": "save_place",
-"p": 0.972
+"p": 0.987
 },
 {
 "text": "اس مقام کو بڑا پتھر کہہ کر یاد رکھنا",
 "label": "save_place",
-"p": 0.9225
+"p": 0.9368
 },
 {
 "text": "یہ جگہ میرے لیے نشان لگا دو",
 "label": "save_place",
-"p": 0.4121
+"p": 0.9413
 },
 {
 "text": "کالا پہاڑ یہاں سے کتنے فاصلے پر ہے",
 "label": "place_distance",
-"p": 0.8588
+"p": 0.87
 },
 {
 "text": "tubewell yahan se kitna door",
 "label": "place_distance",
-"p": 0.6301
+"p": 0.9197
 },
 {
 "text": "چشمہ کس جانب ہے",
 "label": "place_distance",
-"p": 0.9261
+"p": 0.8834
 },
 {
 "text": "قادر کا کنواں کتنا دور رہ گیا",
 "label": "place_distance",
-"p": 0.8397
+"p": 0.7486
 },
 {
 "text": "نالہ کدھر کو ہے",
 "label": "place_distance",
-"p": 0.928
+"p": 0.8967
 },
 {
 "text": "کس جگہ جانوروں نے پیٹ بھر کر کھایا تھا",
-"label": "out_of_scope",
-"p": 0.2393
+"label": "plan_today",
+"p": 0.1676
 },
 {
 "text": "achi charagah ka pata batao",
 "label": "good_grazing",
-"p": 0.1603
+"p": 0.4002
 },
 {
 "text": "گھاس زیادہ کہاں تھی پچھلی دفعہ",
 "label": "good_grazing",
-"p": 0.4858
+"p": 0.7386
 },
 {
 "text": "کون سی طرف چارہ بہتر ملا تھا",
 "label": "good_grazing",
-"p": 0.7519
+"p": 0.6952
 },
 {
 "text": "جہاں اچھی چرائی ہوئی تھی وہ دکھاؤ",
 "label": "good_grazing",
-"p": 0.9907
+"p": 0.9879
 },
 {
 "text": "کیا اس جگہ میرا پہلے آنا ہوا ہے",
 "label": "been_here",
-"p": 0.7574
+"p": 0.7578
 },
 {
 "text": "pehle kabhi idhar aaya hoon",
 "label": "been_here",
-"p": 0.8598
+"p": 0.8073
 },
 {
 "text": "یہاں میں کب آیا تھا آخری بار",
 "label": "last_trip_dir",
-"p": 0.7381
+"p": 0.7002
 },
 {
 "text": "یہ مقام پہلے بھی ریکارڈ ہوا ہے",
 "label": "been_here",
-"p": 0.6299
+"p": 0.5025
 },
 {
 "text": "کیا ہم یہاں سے پہلے گزرے ہیں",
 "label": "been_here",
-"p": 0.913
+"p": 0.9086
 },
 {
 "text": "آج تین بکریاں بیچیں پینتالیس ہزار میں",
-"label": "herd_confirm",
-"p": 0.4717
+"label": "herd_event_sale",
+"p": 0.7182
 },
 {
 "text": "کل رات ایک بکری نے دو بچے دیے",
 "label": "herd_event_birth",
-"p": 0.701
+"p": 0.6893
 },
 {
 "text": "ایک بھیڑ مر گئی",
 "label": "herd_event_death",
-"p": 0.9854
+"p": 0.9944
 },
 {
 "text": "بھوسے کی دس بوریاں لیں اٹھارہ ہزار روپے ادھار پر",
 "label": "out_of_scope",
-"p": 0.8058
+"p": 0.6761
 },
 {
 "text": "سب جانوروں کو کیڑوں کی دوائی دی",
 "label": "out_of_scope",
-"p": 0.9588
+"p": 0.9661
 },
 {
 "text": "کل ملا کے 42 بکریاں اور 17 بھیڑیں ہیں",
 "label": "herd_confirm",
-"p": 0.939
+"p": 0.9554
 },
 {
 "text": "دو دنبے بیچے بیس بیس ہزار کے",
 "label": "herd_event_sale",
-"p": 0.8694
+"p": 0.7323
 },
 {
 "text": "پرسوں منڈی سے ایک بکرا خریدا بائیس ہزار کا",
 "label": "herd_event_purchase",
-"p": 0.7075
+"p": 0.5369
 },
 {
 "text": "اگلے ہفتے سب کو پی پی آر کا ٹیکہ لگوانا ہے یاد دلانا",
 "label": "reminder",
-"p": 0.6334
+"p": 0.6186
 },
 {
 "text": "پانی کا ٹینکر منگوایا تین ہزار پانچ سو",
 "label": "out_of_scope",
-"p": 0.8617
+"p": 0.818
 },
 {
 "text": "بھیڑیا ایک بکری لے گیا",
 "label": "herd_event_loss",
-"p": 0.9653
+"p": 0.8784
 },
 {
 "text": "دو دن پہلے ایک میمنا مر گیا تھا اور آج بیمار بکری کو انجکشن لگوایا",
 "label": "herd_event_death",
-"p": 0.5506
+"p": 0.6185
 },
 {
 "text": "چرانے لے کر جا رہا ہوں تین دن بعد واپس آؤں گا",
 "label": "start_trip",
-"p": 0.7957
+"p": 0.7012
 },
 {
 "text": "واپس آ گیا ہوں سب جانور ٹھیک ہیں",
 "label": "end_trip",
-"p": 0.6801
+"p": 0.5824
 },
 {
 "text": "ڈیڑھ لاکھ میں اونٹ بیچا",
 "label": "herd_event_sale",
-"p": 0.7384
+"p": 0.7782
 },
 {
 "text": "عید کے لیے ایک دنبہ ذبح کیا",
 "label": "herd_event_slaughter",
-"p": 0.9841
+"p": 0.9649
 },
 {
 "text": "دکاندار کو دس ہزار ادھار واپس کیے",
 "label": "out_of_scope",
-"p": 0.7578
+"p": 0.7518
 },
 {
 "text": "بکری بیچی",
 "label": "herd_event_sale",
-"p": 0.8893
+"p": 0.9456
 },
 {
 "text": "آج پانچ میمنے پیدا ہوئے",
 "label": "herd_event_birth",
-"p": 0.9371
+"p": 0.9476
 },
 {
 "text": "کھل اور دانہ لیا بارہ ہزار کا",
-"label": "out_of_scope",
-"p": 0.2898
+"label": "herd_event_purchase",
+"p": 0.262
 }
 ]

@@ -58,6 +58,12 @@ export function fixState(f: { t: number; acc: number } | undefined, nowMs: numbe
   return { state: ageMs > FIX_STALE_MS ? 'stale' : f.acc > FIX_POOR_M ? 'poor' : 'ok', ageMs }
 }
 
+// ---------- at home ----------
+/** GPS wobbles 5-15 m even standing still, so near home a distance and direction would flicker ("10 m N", "0 m", "8 m SW").
+ *  Within this (or within the fix's own accuracy, if worse) the honest answer is simply "at home". */
+export const AT_HOME_M = 100
+export const isAtHome = (distanceM: number, accM: number) => distanceM <= Math.max(AT_HOME_M, accM)
+
 // ---------- forgotten trips ----------
 /** No recorded point for this long, or open this long overall, and the trip is probably forgotten. */
 export const FORGOTTEN_IDLE_MS = 2 * 3600000, FORGOTTEN_TOTAL_MS = 14 * 3600000

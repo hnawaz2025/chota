@@ -57,7 +57,8 @@ async function simTick() {
     if (simIdx >= SIM_ROUTE_KM.length - 1) { simPaused = true; simFrac = 0 }
   }
   const a = toLL(SIM_ROUTE_KM[simIdx]), b = toLL(SIM_ROUTE_KM[Math.min(simIdx + 1, SIM_ROUTE_KM.length - 1)])
-  const wob = Math.sin(now() / 7000) * 0.00012   // small natural wander
+  // Small natural wander while walking only: standing still (paused / walk finished) the demo position stays put.
+  const wob = simPaused ? 0 : Math.sin(now() / 7000) * 0.00012
   emit({ lat: a.lat + (b.lat - a.lat) * simFrac + wob, lon: a.lon + (b.lon - a.lon) * simFrac - wob, acc: 8, t: now() })
 }
 

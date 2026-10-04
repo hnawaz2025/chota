@@ -167,7 +167,7 @@ export function placeTypeOf(name: string): PlaceType | undefined {
 
 // ---------- intents ----------
 export type Intent =
-  | { kind: 'save_place'; name: string; placeType: PlaceType }
+  | { kind: 'save_place'; name: string; placeType: PlaceType; unnamed?: boolean }
   | { kind: 'start_trip' } | { kind: 'end_trip' }
   | ({ kind: 'plan_today' } & PlanNeeds)
   | { kind: 'home_distance' } | { kind: 'way_back' }
@@ -176,11 +176,11 @@ export type Intent =
   | { kind: 'trips_this_month' } | { kind: 'last_trip_duration' }
   | { kind: 'been_here' }
   | { kind: 'place_distance'; name: string }
-  | { kind: 'reminder'; text: string; dueAt: number; assumed?: WhenAssumed; onTripEnd?: boolean }
-  | { kind: 'herd_confirm'; counts: { species: Species; count: number }[] }
+  | { kind: 'reminder'; text: string; dueAt: number; assumed?: WhenAssumed; onTripEnd?: boolean; weak?: boolean }
+  | { kind: 'herd_confirm'; counts: { species: Species; count: number }[]; weak?: boolean }
   | { kind: 'herd_event'; events: HerdEventParse[] }
-  | { kind: 'herd_status' }
-  | { kind: 'reminders_list' }
+  | { kind: 'herd_status'; weak?: boolean }
+  | { kind: 'reminders_list'; weak?: boolean }
   | { kind: 'unknown' }
 
 /** qtyAssumed: no number was said, so 1 was assumed. The read-back must say so. */
@@ -206,6 +206,40 @@ export function planNeeds(text: string): PlanNeeds {
   }
 }
 
+// ---------- saving a place ----------
+const SAVE_CUES = ['یاد رکھ', 'یاد کر لو', 'محفوظ', 'نوٹ کر', 'نام رکھ', 'کا نام', 'نشان لگا', 'نشانی لگا', 'سیو',
+  'yaad rakh', 'yad rakh', 'yaad karlo', 'yaad kar lo', 'save', 'mehfooz', 'mahfooz', 'note kar', 'naam rakh', 'ka naam', 'nishan', 'mark', 'remember']
+const PLACE_REF = ['جگہ', 'یہاں', 'اسے', 'اس کو', 'یہ والی', 'jagah', 'jaga', 'yahan', 'yahaan', 'isko', 'is ko', 'ise', 'place', 'spot', 'here', 'this']
+/** "Remember this place (as …)": a save cue about here / this place, and not a reminder ("یاد دلانا") or a question. */
+function isSavePlace(text: string) {
+  return has(text, ...SAVE_CUES) && has(text, ...PLACE_REF) && !has(text, 'یاد دلا', 'yaad dila', 'yad dila', 'remind')
+}
+/** Filler around a place name, in Urdu, Roman Urdu and English. Everything else in the sentence is the name. */
+const PLACE_STOP = new Set(('اس یہ یہاں وہ جگہ کو کا کی کے نام سے یاد رکھو رکھیں رکھنا رکھ لو لیں دو دیں ہے ہیں تھا اسے محفوظ کرو کریں کر نوٹ بھی اور تو ذرا بھائی یار جی چھوٹا '
+  + 'نشان نشانی لگاؤ لگا دو سیو پلیز ہاں والا جائے مجھے میرے لیے '
+  + 'is ye yeh yahan yahaan wo jagah jaga ko ka ki ke naam se yaad yad rakho rakhen rakhein rakhna rakh lo len do den hai hain tha isko ise mehfooz mahfooz karo karen kar note bhi aur to zara bhai yaar ji chota '
+  + 'nishan nishani lagao laga save please mujhe mere liye karlo '
+  + 'this that the a an place spot here as mark remember it call name named').split(' '))
+/** Name + tag of the place being saved, from any wording. Falls back to the tag word, then a generic name. */
+export function extractPlace(raw: string): { name: string; placeType: PlaceType; unnamed?: boolean } {
+  const t = raw.replace(/[،۔,.!?؟"']/g, ' ').replace(/\s+/g, ' ').trim()
+  const grab = (re: RegExp) => t.match(re)?.[1]?.trim()
+  const named = grab(/(?:کا نام|ka naam)\s+(.+?)\s+(?:رکھو|رکھیں|رکھ دو|رکھ دیں|ہے|دو|rakho|rakhen|rakh do|hai|do)\b/i)
+    ?? grab(/(?:نام رکھو|نام رکھیں|naam rakho|naam rakhen)\s+(.+)$/i)
+    ?? grab(/(.+?)\s+(?:کے نام سے|ke naam se)/i)
+    ?? grab(/(?:کو|ko)\s+(.+?)\s+(?:یاد|محفوظ|نوٹ|سیو|yaad|yad|mehfooz|mahfooz|note|save)/i)
+    ?? grab(/(?:یہاں|yahan|yahaan)\s+(.+?)\s+(?:ہے|ہیں|hai|hain)\b/i)
+    ?? grab(/\b(?:as|called|named)\s+(.+)$/i)
+    ?? grab(/\b(?:place|spot)\s+(.+)$/i)
+  const clean = (s: string) => s.split(' ').filter(w => w && !PLACE_STOP.has(normalize(w)[0] ?? w.toLowerCase())).join(' ')
+  let name = clean(named ?? t)
+  if (!name) name = clean(t)
+  const placeType = placeTypeOf(name) ?? placeTypeOf(t) ?? 'other'
+  // No name said ("یہ جگہ یاد رکھ لو"): the tag word if there is one, otherwise ask (answer.ts opens the naming window).
+  if (!name) return placeType === 'other' ? { name: '', placeType, unnamed: true } : { name: { water: 'پانی', grazing: 'چارہ', shade: 'سایہ', landmark: 'نشانی', home: 'گھر', other: '' }[placeType], placeType }
+  return { name, placeType }
+}
+
 /** A reminder for when the trip ends ("drop the neighbour's goats off on the way back"). */
 const TRIP_END_WORDS = ['واپسی پر', 'واپسی میں', 'واپس آ کر', 'واپس آکر', 'واپس آؤں', 'واپس جاتے', 'سفر کے بعد', 'سفر ختم ہونے', 'گھر پہنچ کر', 'گھر جاتے ہوئے',
   'wapsi par', 'wapsi pe', 'wapsi mein', 'wapas aa kar', 'wapas aakar', 'wapas aaun', 'wapas jate', 'safar ke baad', 'ghar pohanch kar', 'ghar pahunch kar', 'ghar jate hue',
@@ -218,7 +252,9 @@ const END_WORDS = ['ختم', 'بند', 'روک', 'khatam', 'band', 'rok', 'end',
 const LATER_WORDS = ['یاد', 'yaad', 'yad', 'remind', 'کل', 'kal', 'پرسوں', 'parson', 'بعد', 'baad', 'صبح', 'subah', 'شام', 'shaam', 'tomorrow']
 
 /** Explicit "remind me": always a reminder, even if phrased as a question. */
-const REMIND = ['یاد دلا', 'یاد کرا', 'yaad dila', 'yad dila', 'remind']
+const REMIND = ['یاد دلا', 'یاد کرا', 'yaad dila', 'yad dila', 'yaad kara', 'remind me', 'set a reminder', 'reminder laga', 'reminder set']
+/** Asking for the list of reminders (checked before "set a reminder": "آج کیا کیا یاد کرانا ہے" lists, it doesn't set). */
+const REMINDER_LIST = ['یاد دہانیاں', 'یاد دلانے والے', 'کام سناؤ', 'کام بتاؤ', 'kaam sunao', 'kaam batao', 'کیا کیا یاد', 'کون کون سی یاد', 'کون سی یاد دہانی', 'کونسی یاد دہانی', 'reminders', 'yaad dahaniyan', 'kya kya yaad', 'kaun si reminder']
 /** A question is asking about records, not setting a reminder ("کتنی ہے" is not "کرنی ہے"). */
 const QUESTION = ['کتنی', 'کتنا', 'کتنے', 'کیا', 'کہاں', 'کب', 'کیسے', 'کون', 'کس', 'کدھر', 'kitni', 'kitna', 'kitne', 'kya', 'kahan', 'kab', 'kaise', 'kaun', 'kis', 'kidhar', 'how', 'what', 'where', 'when', 'which']
 /** "جانا ہے" / "karni hai": an infinitive + hai = something to do later. Matched per word, never on a question word. */
@@ -227,12 +263,12 @@ function isTodo(toks: string[]) {
 }
 
 function eventType(text: string): HerdEventType | undefined {
-  if (has(text, 'چوری', 'بھیڑیا', 'گم ہو', 'کھو گ', 'chori', 'gum ho', 'bheriya')) return 'loss'
-  if (has(text, 'ذبح', 'zibah', 'qurbani', 'قربانی')) return 'slaughter'
+  if (has(text, 'چوری', 'بھیڑیا', 'گم ہو', 'کھو گ', 'لاپتہ', 'نہیں مل', 'chori', 'gum ho', 'bheriya', 'laapata', 'lapata', 'nahi mil', 'missing')) return 'loss'
+  if (has(text, 'ذبح', 'zibah', 'qurbani', 'قربانی', 'قربان', 'qurban', 'slaughter')) return 'slaughter'
   if (has(text, 'مر گ', 'مرگ', 'مرے', 'mar ga', 'mar gay', 'mar gai', 'mar gae')) return 'death'
   if (has(text, 'پیدا', 'بچے دی', 'بچہ دی', 'bacha di', 'bache di', 'paida', 'سوئی')) return 'birth'
-  if (has(text, 'بیچ', 'فروخت', 'bech')) return 'sale'
-  if (has(text, 'خرید', 'khareed', 'kharid')) return 'purchase'
+  if (has(text, 'بیچ', 'فروخت', 'بک گ', 'بکے', 'bech', 'bik gay', 'bik gai', 'bik gae', 'sold')) return 'sale'
+  if (has(text, 'خرید', 'مول لی', 'مول لیا', 'khareed', 'kharid', 'mol li', 'mol liya', 'bought')) return 'purchase'
 }
 const DELTA_SIGN: Record<HerdEventType, number> = { birth: 1, purchase: 1, sale: -1, death: -1, loss: -1, slaughter: -1, other: 0 }
 export const signOf = (t: HerdEventType) => DELTA_SIGN[t]
@@ -258,13 +294,8 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
     }
   const text = ' ' + toks.join(' ') + ' '
 
-  // 1. save place: "is jagah ko <NAME> yaad rakho" / "اس جگہ کو <NAME> یاد رکھو"
-  const sp = raw.match(/(?:اس|یہاں|یہ)\s*(?:جگہ)?\s*(?:کو)?\s+(.+?)\s+(?:کے نام سے\s+)?(?:یاد رکھو|یاد رکھنا|محفوظ کرو|save)/) ||
-             raw.match(/(?:is|yahan|yeh|this)\s*(?:jagah|jaga|place)?\s*(?:ko)?\s+(.+?)\s+(?:ke naam se\s+)?(?:yaad rakho|yad rakho|yaad rakhna|save|remember)/i)
-  if (sp) {
-    const name = sp[1].replace(/^(جگہ|jagah|jaga)\s+(کو|ko)\s+/i, '').replace(/^(کو|ko)\s+/i, '').trim()
-    return { kind: 'save_place', name, placeType: placeTypeOf(name) ?? 'other' }
-  }
+  // 1. save place, in any wording: "اس جگہ کو چشمہ یاد رکھیں", "اس جگہ کا نام کنواں رکھو", "یہاں پانی ہے یاد رکھ لو", "save this place as water"
+  if (isSavePlace(text)) { const ex = extractPlace(raw); return { kind: 'save_place', name: ex.name, placeType: ex.placeType, unnamed: ex.unnamed } }
   // 1b. where to go today: answered from the herder's own records
   // ...or "tell me a place / somewhere" together with a need (water, heat): "بہت گرمی ہے کوئی قریب کی جگہ بتاؤ جہاں پانی ہو"
   const needs = planNeeds(raw)
@@ -277,13 +308,15 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
     if (has(text, ...TRIP_WORDS) && has(text, ...START_WORDS) || has(text, 'چرانے جا', 'charane ja', 'chara ne ja')) return { kind: 'start_trip' }
     if (has(text, ...TRIP_WORDS) && has(text, ...END_WORDS) || has(text, 'واپس آ گیا', 'گھر پہنچ گیا', 'wapas aa gaya', 'ghar pohanch gaya', 'ghar pahunch gaya')) return { kind: 'end_trip' }
   }
+  if (has(text, ...REMINDER_LIST) && !has(text, 'لگا', 'laga', 'set ')) return { kind: 'reminders_list' }
   // 3. reminders (future tense / "yaad dilana")
   const question = QUESTION.some(w => toks.includes(w)) || /[?؟]/.test(raw)
   if (has(text, ...REMIND) || (!question && (isTodo(toks) || has(text, 'check karna', 'dekhna', 'دیکھنا', 'چیک کرنا')))) {
     if (!has(text, 'دکھاؤ', 'dikhao')) {
       // "On the way back / when I'm back": tied to the end of the trip, not to a clock time.
       if (has(text, ...TRIP_END_WORDS)) return { kind: 'reminder', text: raw.trim(), dueAt: 0, onTripEnd: true }
-      const w = parseWhen(text, toks, nowMs); return { kind: 'reminder', text: raw.trim(), dueAt: w.at, assumed: w.assumed }
+      // Weak: a reminder inferred only from "…نا ہے" (no "یاد دلانا") can be overruled by a confident AI (answer.ts).
+      const w = parseWhen(text, toks, nowMs); return { kind: 'reminder', text: raw.trim(), dueAt: w.at, assumed: w.assumed, weak: !has(text, ...REMIND) }
     }
   }
   // 3. home
@@ -308,14 +341,15 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
       && !has(text, 'کتنی', 'کتنے', 'kitni', 'kitne', 'how many')) {
     const nums = parseNumbers(toks)
     const counts = sq.filter(s => nums.some(n => n.end === s.idx)).map(s => ({ species: s.species, count: s.qty }))
-    if (counts.length) return { kind: 'herd_confirm', counts }
+    if (counts.length) return { kind: 'herd_confirm', counts, weak: true }
   }
   // Herd question only if it is about the herd: "کتنے" alone is also "how many trips / hours / km" (Test 7).
   const herdWord = sq.length > 0 || has(text, 'گنتی', 'ریوڑ', 'ریور', 'جانور', 'ginti', 'rewar', 'janwar', 'herd', 'animals')
   // ...and only a how-many question: "where did the animals graze" mentions animals but is not asking for the count.
   const countQ = has(text, 'کتنی', 'کتنے', 'کتنا', 'گنتی', 'تعداد', 'kitni', 'kitne', 'kitna', 'ginti', 'tadad', 'how many', 'count')
-  if (herdWord && countQ && (question || has(text, 'بتاؤ', 'batao', 'دکھاؤ', 'dikhao'))) return { kind: 'herd_status' }
-  if (has(text, 'یاد دہانی', 'reminder', 'یاد')) return { kind: 'reminders_list' }
+  if (herdWord && countQ && (question || has(text, 'بتاؤ', 'batao', 'دکھاؤ', 'dikhao'))) return { kind: 'herd_status', weak: true }
+  // Needs an actual reminder word: bare "یاد" also appears in "یاد رکھیں" (save a place).
+  if (has(text, 'یاد دہانی', 'یاد دہانیاں', 'reminder', 'yaad dahani', 'kaam baqi', 'کام باقی')) return { kind: 'reminders_list', weak: true }
   return { kind: 'unknown' }
 }
 

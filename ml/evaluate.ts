@@ -14,6 +14,7 @@ const NOW = new Date('2026-10-03T10:00:00').getTime()
 const PLACES = ['پرانا چارہ', 'ٹیوب ویل', 'بڑا درخت', 'کالا پہاڑ', 'چشمہ', 'نالہ', 'قادر کا کنواں', 'سفید پتھر', 'زیارت', 'purana chara', 'tubewell', 'kala pahar']
 const OOS = 'out_of_scope'
 
+function rulesWeak(text: string): boolean { return !!(parse(text, NOW, PLACES) as any).weak }
 function rulesLabel(text: string): string {
   const i: any = parse(text, NOW, PLACES)
   if (i.kind === 'unknown') return OOS
@@ -42,13 +43,17 @@ for (const path of sets) {
   console.log(`\n${path}  (${rows.length} rows)`)
   console.log(`  rules alone              ${score(rulesLabel)}`)
   console.log(`  classifier alone         ${score(t => classify(model, t)[0].label)}`)
-  const app = (t: string) => {   // exactly what the app does (answer.ts): rules, OOS veto on herd matches, classifier fallback
+  // Policy = how rules and AI are combined. `override`: AI confidence needed to overrule a WEAK rule match;
+  // `aiFirst`: AI confidence at which the AI is trusted over ANY rule match.
+  const policy = (override: number, aiFirst: number, minP = 0.5) => (t: string) => {
     const r = rulesLabel(t), g = classify(model, t)[0]
+    if (g.p >= aiFirst && g.label !== OOS) return g.label
+    if (r !== OOS && rulesWeak(t) && g.p >= override && g.label !== r && g.label !== OOS) return g.label
     if (r !== OOS) return r.startsWith('herd_') && g.label === OOS && g.p >= 0.7 ? OOS : r
-    return g.p >= 0.5 ? g.label : OOS
+    return g.p >= minP ? g.label : OOS
   }
-  console.log(`  ► APP (rules+veto+clf)    ${score(app)}`)
-  for (const tau of [0.4, 0.5, 0.6, 0.7, 0.8]) {
-    console.log(`  rules + clf (p ≥ ${tau.toFixed(1)})   ${score(t => { const r = rulesLabel(t); if (r !== OOS) return r; const g = classify(model, t)[0]; return g.p >= tau ? g.label : OOS })}`)
-  }
+  console.log(`  ► APP (as shipped)        ${score(policy(0.7, 0.9))}`)
+  for (const m of [0.5, 0.4, 0.35]) console.log(`    policy override≥0.7 aiFirst≥0.9 act≥${m}  ${score(policy(0.7, 0.9, m))}`)
+  if (process.env.SHOW) for (const r of rows) { const p = policy(0.7, 0.9)(r.text); if (p !== r.label) console.log(`      ✗ ${r.label} → ${p}: ${r.text}`) }
+
 }

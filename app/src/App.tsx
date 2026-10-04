@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getHome, setHome, PLACE_TAGS, placeIcon, type Species, type HerdEventType, type Rating, type Reminder, type PlaceType } from './db'
 import { now, shiftDays, clockOffsetDays } from './clock'
 import { lastFix, onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, currentFixState, checkOpenTrip, resumeTrip, canHoldScreen, type Fix, type OpenTrip } from './gps'
-import { spanUr, spanEn, fixState } from './trail'
+import { spanUr, spanEn, fixState, isAtHome } from './trail'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
 import { answer, LABEL_UR, commitPending, rejectPending, savePlace, agoUr, agoEn, dueUr, dueEn, tripEndUr, tripEndEn, type Answer, type MapFocus, type UiAction, type PendingWrite } from './answer'
 import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN, type HerdStatus } from './herd'
@@ -157,8 +157,9 @@ function Home({ go, onRate }: { go: (s: Screen) => void; onRate: (tripId: number
         // Solid = current position; dashed + "last GPS …" = last known, not current.
         <div className={`homechip strip ${isStale ? 'stale' : ''}`} dir="rtl">
           <span className="ic">🏠</span>
-          <span className="num" dir="ltr">{fmtKm(hd)}</span>
-          <T ur={DIR_UR[compass(bearingDeg(fix!, home))]} en={`Home · ${compass(bearingDeg(fix!, home))}`} />
+          {isAtHome(hd, fix!.acc) && !isStale ? <T ur="آپ گھر پر ہیں" en="You are at home" />
+            : <><span className="num" dir="ltr">{fmtKm(hd)}</span>
+              <T ur={DIR_UR[compass(bearingDeg(fix!, home))]} en={`Home · ${compass(bearingDeg(fix!, home))}`} /></>}
           {isStale && <span className="last"><T ur={`آخری GPS ${spanUr(fs.ageMs)} پہلے`} en={`last GPS ${spanEn(fs.ageMs)} ago`} /></span>}
         </div>))
         : <button className="sethome strip" onClick={() => go('settings')}><span className="ic">🏠</span><T ur="پہلے اپنا گھر محفوظ کریں" en="Set your home first" /></button>}
@@ -171,7 +172,7 @@ function Home({ go, onRate }: { go: (s: Screen) => void; onRate: (tripId: number
           <span className="go-arrow">‹</span>
         </button>
       ))}
-      <VoiceAsk big onAction={a => 'go' in a ? go(a.go) : onRate(a.rate)} />
+      <VoiceAsk big onAction={a => { if ('go' in a) go(a.go); else if ('rate' in a) onRate(a.rate) }} />
       <div className="grid3">
         <button className={`tile trip ${tid ? 'active' : ''}`} onClick={async () => { if (!tid) await startTrip(); go('trip') }}>
           {tid ? <><span className="emoji">{ICON.trip}</span><T ur="سفر جاری ہے" en="Trip in progress" /><i className="count" aria-label="recording"><span className="recdot" /></i></>
@@ -215,7 +216,9 @@ function TripScreen({ go, onEnded }: { go: (s: Screen) => void; onEnded: (id: nu
       <div className="stats">
         <div><I c="⏱" /><b dir="ltr">{Math.floor(mins / 60)}:{String(mins % 60).padStart(2, '0')}</b><T ur="وقت" en="time" /></div>
         <div className={gaps ? 'gappy' : ''}><I c={ICON.trip} /><b dir="ltr">{fmtKm(stats?.distanceM ?? 0)}</b><T ur={gaps ? `ریکارڈ · ${gaps} وقفے` : 'ریکارڈ شدہ'} en={gaps ? `recorded · ${gaps} gap${gaps > 1 ? 's' : ''}` : 'recorded'} /></div>
-        <div><I c={ICON.home} /><b dir="ltr">{hd !== undefined ? fmtKm(hd) : '—'}</b><T ur={`گھر ${hd !== undefined ? DIR_UR[compass(bearingDeg(fix!, home!))] : ''}`} en="to home" /></div>
+        <div><I c={ICON.home} />{hd !== undefined && isAtHome(hd, fix!.acc)
+          ? <><b>✓</b><T ur="گھر پر" en="at home" /></>
+          : <><b dir="ltr">{hd !== undefined ? fmtKm(hd) : '—'}</b><T ur={`گھر ${hd !== undefined ? DIR_UR[compass(bearingDeg(fix!, home!))] : ''}`} en="to home" /></>}</div>
       </div>
       {/* Stable layout: the big buttons never move. Anything that appears (answers) appears below them. */}
       <div className="trip-actions">
@@ -434,7 +437,9 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
   useEffect(() => { if (cur) ansRef.current?.scrollIntoView({ block: cur.a.pending ? 'end' : 'nearest' }) }, [cur])
   /** Offline / unsupported: the phone keyboard's own mic (Gboard Urdu voice typing) fills the same box. */
   const toKeyboardMic = () => { stopListening(true); setKbHint(true); input.current?.focus() }
-  const show = (q: string, a: Answer) => { setCur({ q, a }); speak(a.ur); onMap?.(a.map); if (a.action) onAction(a.action) }
+  const [naming, setNaming] = useState(false)
+  // "Remember this place" with no name said opens the naming window right here (spot frozen at that moment).
+  const show = (q: string, a: Answer) => { setCur({ q, a }); speak(a.ur); onMap?.(a.map); if (a.action) { if ('namePlace' in a.action) setNaming(true); else onAction(a.action) } }
   const ask = async (text: string, forced?: string) => { if (!text.trim()) return; const a = await answer(text, forced); setQ(''); show(text, a) }
   useEffect(() => { if (!heard) return; const t = setTimeout(() => { ask(heard); setHeard(undefined) }, 900); return () => clearTimeout(t) // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heard])
@@ -481,6 +486,7 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
         </div>
       )}
       {big && cur?.a.map && <MapView focus={cur.a.map} className="map short" />}
+      {naming && <NamePlace onClose={r => { setNaming(false); if (r) show(cur?.q ?? '', r) }} />}
       {big && <details className="examples-box"><summary><span className="ic">💬</span><T ur="کیا پوچھ سکتے ہیں؟ (مثالیں)" en="What can I say? (examples)" /></summary>
         <div className="chips examples">{EXAMPLES.map(([u, e]) => <button key={u} onClick={() => ask(u)}><T ur={u} en={e} /></button>)}</div></details>}
     </div>

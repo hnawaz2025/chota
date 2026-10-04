@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { splitTrail, fixState, isForgotten, calendarDaysAgo, spanUr, GAP_MS, FIX_STALE_MS } from '../src/trail.ts'
+import { splitTrail, fixState, isForgotten, calendarDaysAgo, spanUr, isAtHome, GAP_MS, FIX_STALE_MS } from '../src/trail.ts'
 
 const MIN = 60000, T0 = new Date('2026-10-03T08:00:00').getTime()
 const HOME = { lat: 29.53766, lon: 65.97213 }
@@ -72,4 +72,10 @@ test('days ago counts calendar days: last evening is yesterday this morning', ()
 
 test('Urdu spans: singular hour', () => {
   assert.equal(spanUr(60 * MIN), '1 گھنٹہ'); assert.equal(spanUr(3 * 60 * MIN), '3 گھنٹے'); assert.equal(spanUr(5 * MIN), '5 منٹ')
+})
+
+test('at home: GPS wobble near home is "at home", not a flickering distance', () => {
+  assert.equal(isAtHome(0, 8), true); assert.equal(isAtHome(12, 8), true); assert.equal(isAtHome(95, 10), true)
+  assert.equal(isAtHome(140, 10), false)
+  assert.equal(isAtHome(140, 180), true)   // a poor fix can't tell 140 m from home
 })
