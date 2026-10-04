@@ -125,12 +125,18 @@ T = {
  'herd_status': [
   'میرے پاس کتنی {sp} ہیں', 'ریوڑ کتنا ہے', 'کل کتنے جانور ہیں', 'گنتی کیا ہے', '{sp} کتنی بچی ہیں', 'میرے ریوڑ کی گنتی کتنی ہے',
   'کتنی {sp} ہیں', 'ریوڑ کی تعداد بتاؤ', 'kitni {spr} hain', 'rewar kitna hai', 'mere paas kitne janwar hain', 'how many {spen} do i have'],
- 'out_of_scope': [  # greetings, cut features (health, prices, water discovery, grazing advice), chit-chat
+ 'plan_today': [  # "where should I go today" -> answered from the herder's own records (water, grazing, shade)
+  'آج کہاں جاؤں', 'آج ریوڑ کہاں لے جاؤں', 'آج کدھر چراؤں', 'پانی کہاں ملے گا', 'آج کہاں چرانا چاہیے', 'گرمی ہے قریب کہاں جاؤں',
+  'زیادہ دور نہیں جا سکتا کہاں جاؤں', '{sp} کو پانی چاہیے کہاں لے جاؤں', 'آج کون سی جگہ ٹھیک رہے گی', 'پیاسے جانوروں کو کدھر لے جاؤں',
+  'آج کس طرف جانا بہتر ہے', 'پانی اور چارہ دونوں کہاں ملیں گے', 'دھوپ بہت ہے سایہ والی جگہ کہاں ہے', 'قریب میں پانی کہاں ہے',
+  'aaj kahan jaun', 'aaj rewar kahan le jaun', 'pani kahan milega', 'garmi hai qareeb kahan jaun', 'zyada door nahi ja sakta kahan jaun',
+  '{spr} ko pani chahiye kahan le jaun', 'aaj kidhar charaun', 'where should i go today', 'where can i find water nearby'],
+ 'out_of_scope': [  # greetings, cut features (health, prices, forecasts), chit-chat
   'السلام علیکم', 'کیسے ہو', 'شکریہ', 'خدا حافظ', 'تمہارا نام کیا ہے', 'گانا سناؤ', 'کل بارش ہو گی', 'آج موسم کیسا ہے', 'گرمی بہت ہے',
   '{sp1} بیمار ہے کیا کروں', '{sp1} کو دوائی دی', 'جانور کھانس رہا ہے', '{sp1} کو بخار ہے', 'سب جانوروں کو ٹیکہ لگایا',
   'منڈی میں {sp1} کا ریٹ کیا ہے', '{sp1} کی قیمت کیا ہے', 'بھوسے کی بوری کتنے کی ہے', 'ادھار کتنا باقی ہے', 'دوکاندار کو پیسے دیے',
-  'پانی کہاں ملے گا', 'کہاں چرانا چاہیے', 'کون سی چراگاہ بہتر ہو گی', 'وقت کیا ہوا ہے', 'بیٹے کو فون کرو',
-  'salam', 'kya haal hai', 'shukriya', 'baarish hogi', '{sp1r} bimar hai', '{sp1r} ko dawai di', 'mandi ka rate kya hai', 'pani kahan milega',
+  'وقت کیا ہوا ہے', 'بیٹے کو فون کرو',
+  'salam', 'kya haal hai', 'shukriya', 'baarish hogi', '{sp1r} bimar hai', '{sp1r} ko dawai di', 'mandi ka rate kya hai',
   'hello', 'thank you', 'what is the weather'],
 }
 

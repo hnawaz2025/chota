@@ -169,6 +169,7 @@ export function placeTypeOf(name: string): PlaceType | undefined {
 export type Intent =
   | { kind: 'save_place'; name: string; placeType: PlaceType }
   | { kind: 'start_trip' } | { kind: 'end_trip' }
+  | ({ kind: 'plan_today' } & PlanNeeds)
   | { kind: 'home_distance' } | { kind: 'way_back' }
   | { kind: 'good_grazing' }
   | { kind: 'last_trip_dir'; dir: Dir }
@@ -184,6 +185,21 @@ export type Intent =
 
 /** qtyAssumed: no number was said, so 1 was assumed. The read-back must say so. */
 export interface HerdEventParse { species: Species; type: HerdEventType; qty: number; qtyAssumed: boolean }
+
+/** What the herder said they need today. CHOTA answers from their own records only (no advice, no forecast). */
+export interface PlanNeeds { water: boolean; shade: boolean; near: boolean }
+const PLAN_WORDS = ['کہاں جاؤں', 'کدھر جاؤں', 'کہاں جاوں', 'کہاں لے جاؤں', 'کہاں چراؤں', 'کدھر چراؤں', 'کہاں چرانا', 'پانی کہاں ملے', 'کہاں جائیں',
+  'kahan jaun', 'kahan jaon', 'kahan jaoon', 'kidhar jaun', 'kahan le jaun', 'kahan charaun', 'kahan charana', 'pani kahan milega', 'kahan jayen',
+  'where should i go', 'where to go', 'where should i graze', 'where can i find water']
+export function planNeeds(text: string): PlanNeeds {
+  const t = ' ' + normalize(text).join(' ') + ' '
+  const neg = has(t, 'نہیں', 'nahi', 'nhi', 'nahin', 'not')
+  return {
+    water: has(t, 'پانی', 'پیاس', 'pani', 'paani', 'pyas', 'water', 'thirst'),
+    shade: has(t, 'گرمی', 'دھوپ', 'سایہ', 'garmi', 'dhoop', 'dhup', 'saya', 'heat', 'hot', 'shade'),
+    near: has(t, 'قریب', 'پاس ہی', 'نزدیک', 'qareeb', 'kareeb', 'nazdeek', 'paas hi', 'near', 'close') || (neg && has(t, 'دور', 'dur', 'door', 'far')),
+  }
+}
 
 const TRIP_WORDS = ['سفر', 'ٹرپ', 'چکر', 'trip', 'safar', 'chakkar', 'grazing']
 const START_WORDS = ['شروع', 'چلو', 'چلیں', 'نکل', 'shuru', 'chalo', 'chalein', 'chalen', 'nikal', 'start', "let's go", 'lets go']
@@ -239,6 +255,8 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
     const name = sp[1].replace(/^(جگہ|jagah|jaga)\s+(کو|ko)\s+/i, '').replace(/^(کو|ko)\s+/i, '').trim()
     return { kind: 'save_place', name, placeType: placeTypeOf(name) ?? 'other' }
   }
+  // 1b. where to go today: answered from the herder's own records
+  if (has(text, ...PLAN_WORDS)) return { kind: 'plan_today', ...planNeeds(raw) }
   // 2. trip control, now (not "later": that is a reminder)
   const later = LATER_WORDS.some(w => toks.includes(w) || (w.includes(' ') && text.includes(w)))
   if (!later) {
