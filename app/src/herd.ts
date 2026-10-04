@@ -42,6 +42,6 @@ export async function trackedSpecies(): Promise<Species[]> {
   return (['goat', 'sheep', 'camel', 'cattle'] as Species[]).filter(x => s.has(x))
 }
 
-export async function confirmCount(species: Species, count: number, source: HerdConfirmation['source']) {
-  return db.confirmations.add({ species, count, confirmedAt: now(), source })
+export async function confirmCount(species: Species, count: number, source: HerdConfirmation['source'], extra: { tripId?: number; expected?: number } = {}) {
+  return db.confirmations.add({ species, count, confirmedAt: now(), source, ...extra })
 }

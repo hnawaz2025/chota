@@ -176,7 +176,7 @@ export type Intent =
   | { kind: 'trips_this_month' } | { kind: 'last_trip_duration' }
   | { kind: 'been_here' }
   | { kind: 'place_distance'; name: string }
-  | { kind: 'reminder'; text: string; dueAt: number; assumed?: WhenAssumed }
+  | { kind: 'reminder'; text: string; dueAt: number; assumed?: WhenAssumed; onTripEnd?: boolean }
   | { kind: 'herd_confirm'; counts: { species: Species; count: number }[] }
   | { kind: 'herd_event'; events: HerdEventParse[] }
   | { kind: 'herd_status' }
@@ -205,6 +205,11 @@ export function planNeeds(text: string): PlanNeeds {
     near: has(t, 'قریب', 'پاس ہی', 'پاس میں', 'آس پاس', 'نزدیک', 'qareeb', 'kareeb', 'nazdeek', 'paas hi', 'paas mein', 'pass mein', 'aas paas', 'near', 'close') || (neg && has(t, 'دور', 'dur', 'door', 'far')),
   }
 }
+
+/** A reminder for when the trip ends ("drop the neighbour's goats off on the way back"). */
+const TRIP_END_WORDS = ['واپسی پر', 'واپسی میں', 'واپس آ کر', 'واپس آکر', 'واپس آؤں', 'واپس جاتے', 'سفر کے بعد', 'سفر ختم ہونے', 'گھر پہنچ کر', 'گھر جاتے ہوئے',
+  'wapsi par', 'wapsi pe', 'wapsi mein', 'wapas aa kar', 'wapas aakar', 'wapas aaun', 'wapas jate', 'safar ke baad', 'ghar pohanch kar', 'ghar pahunch kar', 'ghar jate hue',
+  'on the way back', 'when i get back', 'when i am back', 'after the trip', 'when the trip ends']
 
 const TRIP_WORDS = ['سفر', 'ٹرپ', 'چکر', 'trip', 'safar', 'chakkar', 'grazing']
 const START_WORDS = ['شروع', 'چلو', 'چلیں', 'نکل', 'shuru', 'chalo', 'chalein', 'chalen', 'nikal', 'start', "let's go", 'lets go']
@@ -275,7 +280,11 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
   // 3. reminders (future tense / "yaad dilana")
   const question = QUESTION.some(w => toks.includes(w)) || /[?؟]/.test(raw)
   if (has(text, ...REMIND) || (!question && (isTodo(toks) || has(text, 'check karna', 'dekhna', 'دیکھنا', 'چیک کرنا')))) {
-    if (!has(text, 'دکھاؤ', 'dikhao')) { const w = parseWhen(text, toks, nowMs); return { kind: 'reminder', text: raw.trim(), dueAt: w.at, assumed: w.assumed } }
+    if (!has(text, 'دکھاؤ', 'dikhao')) {
+      // "On the way back / when I'm back": tied to the end of the trip, not to a clock time.
+      if (has(text, ...TRIP_END_WORDS)) return { kind: 'reminder', text: raw.trim(), dueAt: 0, onTripEnd: true }
+      const w = parseWhen(text, toks, nowMs); return { kind: 'reminder', text: raw.trim(), dueAt: w.at, assumed: w.assumed }
+    }
   }
   // 3. home
   if (has(text, 'واپس', 'wapas', 'way back') && has(text, 'راستہ', 'رستہ', 'rasta', 'path', 'route')) return { kind: 'way_back' }

@@ -18,6 +18,8 @@ export const placeIcon = (t: PlaceType) => t === 'home' ? '🏠' : PLACE_TAGS.fi
 export interface HerdConfirmation {
   id?: number; species: Species; count: number; confirmedAt: number
   source: 'manual' | 'voice' | 'reconcile'
+  /** Counted on return from this trip; `expected` = the estimate at that moment (difference shown, never explained away). */
+  tripId?: number; expected?: number
 }
 /** A count-changing event recorded since some confirmation. Estimates are derived, never stored. */
 export interface HerdEvent {
@@ -39,7 +41,11 @@ export interface Place {
 export interface Reminder {
   id?: number; text: string; dueAt: number; status: 'pending' | 'fired' | 'done' | 'dismissed'
   source: 'user' | 'system'; kind?: string; placeId?: number; createdAt: number; firedAt?: number
+  /** 'trip_end': fires when a trip ends ("واپسی پر…"), not at a clock time; dueAt is then TRIP_END_DUE. */
+  trigger?: 'trip_end'
 }
+/** dueAt for trip-end reminders: never reached by the clock, sorts after timed reminders. */
+export const TRIP_END_DUE = Number.MAX_SAFE_INTEGER
 export interface Setting { key: string; value: unknown }
 
 export const db = new Dexie('chota') as Dexie & {

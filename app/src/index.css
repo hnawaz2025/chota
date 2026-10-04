@@ -396,3 +396,9 @@ details { color: var(--ink); }
 
 /* map: names only when zoomed in (or highlighted), so many places don't overlap */
 .z-low .pin.place:not(.hi) b { display: none; }
+
+/* return-count step: one row per species, the number box on the left (RTL) */
+.count-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.count-row .tx { flex: 1; align-items: flex-start; }
+.count-row input.num { width: 7ch; flex: none; font-size: 1.8rem; text-align: center; }
+.came-home { font-size: .85rem; color: var(--muted); margin-inline-start: 6px; }

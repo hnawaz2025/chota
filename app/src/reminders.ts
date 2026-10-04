@@ -29,14 +29,22 @@ export async function checkReminders(): Promise<Reminder[]> {
 }
 async function fireDue(): Promise<Reminder[]> {
   await proactive()
-  const due = await db.reminders.where('status').equals('pending').filter(r => r.dueAt <= now()).toArray()
+  const due = await db.reminders.where('status').equals('pending').filter(r => !r.trigger && r.dueAt <= now()).toArray()
   for (const r of due) await db.reminders.update(r.id!, { status: 'fired', firedAt: now() })
   for (const r of due) notify(r)
   return due
 }
 
+/** The trip just ended: fire every pending "on the way back" reminder now, whatever the clock says. */
+export async function fireTripEnd(): Promise<Reminder[]> {
+  const due = await db.reminders.where('status').equals('pending').filter(r => r.trigger === 'trip_end').toArray()
+  for (const r of due) await db.reminders.update(r.id!, { status: 'fired', firedAt: now() })
+  for (const r of due) notify(r)
+  return due.map(r => ({ ...r, status: 'fired' as const, firedAt: now() }))
+}
+
 function notify(r: Reminder) {
-  const body = now() - r.dueAt > 10 * 60000 && r.source === 'user' ? `(دیر سے) ${r.text}` : r.text
+  const body = !r.trigger && now() - r.dueAt > 10 * 60000 && r.source === 'user' ? `(دیر سے) ${r.text}` : r.text
   try {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
     navigator.serviceWorker?.ready.then(reg => reg.showNotification('CHOTA', { body, tag: `r${r.id}`, icon: `${import.meta.env.BASE_URL}icon-192.png` }))

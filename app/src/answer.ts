@@ -1,5 +1,5 @@
 /** Executes a parsed intent against the local DB and returns a templated Urdu + English answer. */
-import { db, getHome, PLACE_TAGS, type Place, type PlaceType, type Trip } from './db'
+import { db, getHome, PLACE_TAGS, TRIP_END_DUE, type Place, type PlaceType, type Trip } from './db'
 import { now, DAY } from './clock'
 import { parse, signOf, normalize, speciesQty, parseWhen, findDir, planNeeds, type Intent, type HerdEventParse, type PlanNeeds } from './nlu'
 import { classify, type IntentModel } from './intentModel'
@@ -16,7 +16,7 @@ export type PendingWrite =
   | { kind: 'herd_event'; events: HerdEventParse[]; sourceText: string }
   | { kind: 'herd_confirm'; counts: { species: Species; count: number }[]; sourceText: string }
   | { kind: 'end_trip'; sourceText: string }
-  | { kind: 'reminder'; text: string; dueAt: number; placeId?: number; tag?: string; sourceText: string }
+  | { kind: 'reminder'; text: string; dueAt: number; placeId?: number; tag?: string; sourceText: string; onTripEnd?: boolean }
 /** Something the screen should do after the answer: open the trip screen, or ask for the grazing rating. */
 export type UiAction = { go: 'trip' } | { rate: number }
 /**
@@ -51,8 +51,10 @@ export function rejectPending(p: PendingWrite): Answer {
 
 export async function commitPending(p: PendingWrite): Promise<Answer> {
   if (p.kind === 'reminder') {
-    await db.reminders.add({ text: p.text, dueAt: p.dueAt, status: 'pending', source: 'user', createdAt: now(), placeId: p.placeId, kind: p.tag })
-    return { ur: `یاد دہانی لگا دی: ${dueUr(p.dueAt)}۔`, en: `Reminder set for ${dueEn(p.dueAt)}.`, ok: true, intent: 'reminder' }
+    await db.reminders.add({ text: p.text, dueAt: p.onTripEnd ? TRIP_END_DUE : p.dueAt, status: 'pending', source: 'user', createdAt: now(), placeId: p.placeId, kind: p.tag,
+      ...(p.onTripEnd ? { trigger: 'trip_end' as const } : {}) })
+    return p.onTripEnd ? { ur: `یاد دہانی لگا دی: ${tripEndUr()}۔`, en: `Reminder set for ${tripEndEn()}.`, ok: true, intent: 'reminder' }
+      : { ur: `یاد دہانی لگا دی: ${dueUr(p.dueAt)}۔`, en: `Reminder set for ${dueEn(p.dueAt)}.`, ok: true, intent: 'reminder' }
   }
   if (p.kind === 'end_trip') {
     const id = await endTrip()
@@ -100,6 +102,9 @@ export function dueUr(t: number) {
   const h = d.getHours(), part = h < 4 ? 'رات' : h < 12 ? 'صبح' : h < 16 ? 'دوپہر' : h < 19 ? 'شام' : 'رات'
   return `${day} ${part} ${h % 12 || 12} بجے`
 }
+/** When a trip-end reminder fires: at the end of the running trip, or of the next one if none is running. */
+export const tripEndUr = () => activeTrip() ? 'یہ سفر ختم ہونے پر (واپسی پر)' : 'اگلا سفر ختم ہونے پر (واپسی پر)'
+export const tripEndEn = () => activeTrip() ? 'when this trip ends (on the way back)' : 'when the next trip ends (on the way back)'
 export function dueEn(t: number) {
   const d = new Date(t), today = new Date(now()); today.setHours(0, 0, 0, 0)
   const days = Math.round((new Date(t).setHours(0, 0, 0, 0) - today.getTime()) / DAY)
@@ -415,6 +420,8 @@ async function run(intent: Intent, text: string, places: Place[]): Promise<Answe
       const place = places.find(p => intent.text.includes(p.name))
       const pending: PendingWrite = { kind: 'reminder', text: intent.text, dueAt: intent.dueAt, placeId: place?.id, sourceText: text,
         tag: /گنتی|count|گن/.test(intent.text) ? 'herd_count' : undefined }
+      if (intent.onTripEnd) return { ...A(`میں نے سمجھا: یاد دہانی ${tripEndUr()} — "${intent.text}"۔ کیا یہ درست ہے؟`,
+        `I understood: a reminder ${tripEndEn()}: "${intent.text}". Is that right?`), pending: { ...pending, onTripEnd: true } }
       const as = intent.assumed ? ASSUMED_WHEN[intent.assumed] : undefined
       return { ...A(`میں نے سمجھا: یاد دہانی ${dueUr(intent.dueAt)}${as ? ` (${as[0]})` : ''} — "${intent.text}"۔ کیا یہ درست ہے؟`,
         `I understood: a reminder ${dueEn(intent.dueAt)}${as ? ` (${as[1]})` : ''}: "${intent.text}". Is that right?`), pending }
@@ -449,7 +456,7 @@ async function run(intent: Intent, text: string, places: Place[]): Promise<Answe
     case 'reminders_list': {
       const rs = await db.reminders.where('status').equals('pending').sortBy('dueAt')
       if (!rs.length) return A('کوئی یاد دہانی باقی نہیں۔', 'No pending reminders.')
-      return A(rs.map(r => `${dueUr(r.dueAt)}: ${r.text}`).join('۔ '), rs.map(r => `${dueEn(r.dueAt)}: ${r.text}`).join('. '))
+      return A(rs.map(r => `${r.trigger ? tripEndUr() : dueUr(r.dueAt)}: ${r.text}`).join('۔ '), rs.map(r => `${r.trigger ? tripEndEn() : dueEn(r.dueAt)}: ${r.text}`).join('. '))
     }
     default:
       return A('معاف کیجیے، یہ بات سمجھ نہیں آئی۔ نیچے دی گئی مثالوں میں سے کوئی آزمائیں۔', 'Sorry, I did not understand. Try one of the examples below.', undefined, false)

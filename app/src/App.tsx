@@ -5,10 +5,10 @@ import { now, shiftDays, clockOffsetDays } from './clock'
 import { lastFix, onFix, startPositioning, startTrip, endTrip, activeTrip, isSimulated, setSimulated, simSet, simState, tripStats, currentFixState, checkOpenTrip, resumeTrip, canHoldScreen, type Fix, type OpenTrip } from './gps'
 import { spanUr, spanEn, fixState } from './trail'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
-import { answer, LABEL_UR, commitPending, rejectPending, savePlace, agoUr, agoEn, dueUr, dueEn, type Answer, type MapFocus, type UiAction, type PendingWrite } from './answer'
+import { answer, LABEL_UR, commitPending, rejectPending, savePlace, agoUr, agoEn, dueUr, dueEn, tripEndUr, tripEndEn, type Answer, type MapFocus, type UiAction, type PendingWrite } from './answer'
 import { herdStatus, trackedSpecies, confirmCount, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN, type HerdStatus } from './herd'
 import { signOf, placeTypeOf } from './nlu'
-import { checkReminders, requestNotifications } from './reminders'
+import { checkReminders, fireTripEnd, requestNotifications } from './reminders'
 import { speak, canListen, listen, stopListening, hasUrduVoice, LISTEN_ERROR } from './speech'
 import { loadDemo, clearAll } from './demo'
 import { MapView } from './MapView'
@@ -86,23 +86,34 @@ export default function App() {
     run(); const i = setInterval(run, 15000); return () => clearInterval(i)
   }, [])
   const go = (s: Screen) => { setScreen(s); window.scrollTo(0, 0) }
+  const [returnCount, setReturnCount] = useState<number>()
+  /** Every way a trip ends lands here: "on the way back" reminders first, then the grazing rating, then count what came home. */
+  const afterTripEnded = async (id: number) => {
+    const due = await fireTripEnd()
+    if (due.length) { setFired(f => [...due, ...f]); speak(due[0].text) }
+    setRateTrip(id); go('home')
+  }
+  const tripEndFired = fired.length > 0 && fired[0].trigger === 'trip_end'
 
   return (
     <div className="app">
       <Header onHome={() => go('home')} screen={screen} />
       <main>
-        {screen === 'home' && <Home go={go} onRate={setRateTrip} />}
-        {screen === 'trip' && <TripScreen go={go} onEnded={id => { setRateTrip(id); go('home') }} />}
+        {screen === 'home' && <Home go={go} onRate={afterTripEnded} />}
+        {screen === 'trip' && <TripScreen go={go} onEnded={afterTripEnded} />}
         {screen === 'reminders' && <Reminders />}
         {screen === 'herd' && <Herd />}
         {screen === 'map' && <MapScreen />}
         {screen === 'history' && <History />}
         {screen === 'settings' && <Settings />}
       </main>
-      {openTrip && <ForgottenTrip o={openTrip} onDone={ended => { setOpenTrip(undefined); if (ended) { setRateTrip(ended); go('home') } else go('trip') }} />}
-      {rateTrip && <RateTrip id={rateTrip} onDone={() => setRateTrip(undefined)} />}
-      {/* One modal at a time: resolving the open trip / rating comes first, reminders wait their turn. */}
-      {!openTrip && !rateTrip && fired.length > 0 && <FiredReminder r={fired[0]} onClose={() => setFired(f => f.slice(1))} go={go} />}
+      {openTrip && <ForgottenTrip o={openTrip} onDone={ended => { setOpenTrip(undefined); if (ended) afterTripEnded(ended); else go('trip') }} />}
+      {/* One modal at a time. Order after a trip: "on the way back" reminder → grazing rating → count what came home.
+          Other reminders wait until those are done. */}
+      {!openTrip && tripEndFired && <FiredReminder r={fired[0]} onClose={() => setFired(f => f.slice(1))} go={go} />}
+      {!openTrip && !tripEndFired && rateTrip && <RateTrip id={rateTrip} onDone={() => { setReturnCount(rateTrip); setRateTrip(undefined) }} />}
+      {!openTrip && !tripEndFired && !rateTrip && returnCount && <ReturnCount tripId={returnCount} go={go} onDone={() => setReturnCount(undefined)} />}
+      {!openTrip && !rateTrip && !returnCount && fired.length > 0 && !tripEndFired && <FiredReminder r={fired[0]} onClose={() => setFired(f => f.slice(1))} go={go} />}
     </div>
   )
 }
@@ -326,6 +337,56 @@ function RateTrip({ id, onDone }: { id: number; onDone: () => void }) {
   )
 }
 
+/**
+ * Back from a trip: count what came home. Boxes start empty (never prefilled with the estimate, which would invite
+ * "yes, 49" without counting). A difference from the estimate is shown and asked about, never explained away.
+ */
+function ReturnCount({ tripId, go, onDone }: { tripId: number; go: (s: Screen) => void; onDone: () => void }) {
+  const herd = useLiveQuery(async () => Promise.all((await trackedSpecies()).map(herdStatus)), [])
+  const [vals, setVals] = useState<Partial<Record<Species, string>>>({})
+  const [res, setRes] = useState<{ sp: Species; n: number; exp?: number }[]>()
+  useEffect(() => { if (herd && herd.length === 0) onDone() }, [herd, onDone])   // nothing tracked yet: nothing to reconcile
+  if (!herd || herd.length === 0) return null
+  const save = async () => {
+    const out: { sp: Species; n: number; exp?: number }[] = []
+    for (const h of herd) {
+      const v = parseInt(vals[h.species] ?? ''); if (!(v >= 0)) continue
+      await confirmCount(h.species, v, 'reconcile', { tripId, expected: h.estimate })
+      out.push({ sp: h.species, n: v, exp: h.estimate })
+    }
+    if (out.length) setRes(out)
+  }
+  if (res) {
+    const off = res.filter(r => r.exp !== undefined && r.exp !== r.n)
+    return (
+      <Modal onClose={onDone}>
+        <Lab ic={off.length ? '⚠️' : '✓'} ur={off.length ? 'گنتی اندازے سے مختلف ہے' : 'سب جانور واپس — گنتی اندازے کے مطابق'} en={off.length ? 'The count differs from the estimate' : 'All back — count matches the estimate'} big />
+        {res.map(r => (
+          <p key={r.sp} className={`spot ${r.exp !== undefined && r.exp !== r.n ? 'bad' : 'ok'}`}><Lab ic={SPECIES_IC[r.sp]}
+            ur={r.exp === undefined ? `${SPECIES_UR[r.sp]}: ${r.n} — پہلی تصدیق شدہ گنتی` : r.exp === r.n ? `${SPECIES_UR[r.sp]}: ${r.n} ✓` : `${SPECIES_UR[r.sp]}: گنتی ${r.n}، اندازہ ${r.exp} — ${Math.abs(r.n - r.exp)} ${r.n < r.exp ? 'کم' : 'زیادہ'}`}
+            en={r.exp === undefined ? `${SPECIES_EN[r.sp]}: ${r.n} — first confirmed count` : r.exp === r.n ? `${SPECIES_EN[r.sp]}: ${r.n} ✓` : `${SPECIES_EN[r.sp]}: counted ${r.n}, estimate ${r.exp} — ${Math.abs(r.n - r.exp)} ${r.n < r.exp ? 'fewer' : 'more'}`} emph /></p>))}
+        {off.length > 0 && <p className="muted note"><T ur="CHOTA اندازہ نہیں لگاتا کہ کیا ہوا۔ کوئی جانور پیچھے رہ گیا، بیچا یا گم ہوا؟ معلوم ہو تو ریوڑ کے صفحے پر درج کریں۔ نئی گنتی اب درست مانی جائے گی۔"
+          en="CHOTA does not guess what happened. Was an animal left behind, sold or lost? If you know, record it on the Herd screen. The new count is now the confirmed one." /></p>}
+        {off.length > 0 && <button className="big-btn" onClick={() => { onDone(); go('herd') }}><I c={ICON.herd} /><T ur="ریوڑ کا صفحہ کھولیں" en="Open Herd" /></button>}
+        <button className={off.length ? 'big-btn secondary' : 'big-btn'} onClick={onDone}><I c="✓" /><T ur="ٹھیک ہے" en="OK" /></button>
+      </Modal>)
+  }
+  return (
+    <Modal onClose={onDone}>
+      <Lab ic="🏠" ur="واپس آ گئے — ریوڑ گن لیں؟" en="Back home — count the herd?" big />
+      <p className="muted note"><T ur="جتنے جانور واپس آئے، گن کر لکھیں" en="Count what came home and enter it" /></p>
+      {herd.map(h => (
+        <label key={h.species} className="count-row" dir="rtl">
+          <span className="ic">{SPECIES_IC[h.species]}</span><T ur={SPECIES_UR[h.species]} en={SPECIES_EN[h.species]} />
+          <input className="num" inputMode="numeric" value={vals[h.species] ?? ''} placeholder={h.estimate !== undefined ? `≈${h.estimate}` : '?'}
+            aria-label={`${SPECIES_EN[h.species]} count`} onChange={e => setVals(v => ({ ...v, [h.species]: e.target.value.replace(/\D/g, '') }))} />
+        </label>))}
+      <button className="big-btn ok" disabled={!Object.values(vals).some(v => v)} onClick={save}><I c="✓" /><T ur="گنتی محفوظ کریں" en="Save count" /></button>
+      <button className="link skip" onClick={onDone}><T ur="بعد میں" en="Later" /></button>
+    </Modal>
+  )
+}
+
 // ---------------- Voice (home hub + trip screen) ----------------
 const EXAMPLES: [string, string][] = [
   ['سفر شروع کرو', "Let's start the trip"],
@@ -456,12 +517,12 @@ function Reminders() {
       {rs.length === 0 && <p className="muted note"><Lab ic="🔔" ur="کوئی یاد دہانی نہیں" en="No reminders" /></p>}
       {rs.map(r => (
         <div key={r.id} className={`card rem ${r.status} ${r.source}`}>
-          <div className="when"><span className="ic">{r.status === 'fired' ? '🔔' : '⏰'}</span>{/* "now" only while it is fresh; an old fired reminder shows when it was due */}
-            <T ur={r.status === 'fired' && now() - (r.firedAt ?? 0) < 3600000 ? 'ابھی' : dueUr(r.dueAt)} en={r.status === 'fired' && now() - (r.firedAt ?? 0) < 3600000 ? 'now' : dueEn(r.dueAt)} emph />{r.source === 'system' && <span className="badge">CHOTA</span>}</div>
+          <div className="when"><span className="ic">{r.status === 'fired' ? '🔔' : r.trigger ? '🏁' : '⏰'}</span>{/* "now" only while it is fresh; an old fired reminder shows when it was due */}
+            <T ur={r.status === 'fired' && now() - (r.firedAt ?? 0) < 3600000 ? 'ابھی' : r.trigger ? tripEndUr() : dueUr(r.dueAt)} en={r.status === 'fired' && now() - (r.firedAt ?? 0) < 3600000 ? 'now' : r.trigger ? tripEndEn() : dueEn(r.dueAt)} emph />{r.source === 'system' && <span className="badge">CHOTA</span>}</div>
           <div className="ur what" dir="auto">{r.text}</div>
           <div className="actions">
             <button className="done" onClick={() => db.reminders.update(r.id!, { status: 'done' })}><span className="ic">✓</span><T ur="ہو گیا" en="Done" /></button>
-            <button onClick={() => db.reminders.update(r.id!, { status: 'pending', dueAt: now() + 3600000 })}><span className="ic">⏰</span><T ur="ایک گھنٹہ بعد" en="+1 hour" /></button>
+            <button onClick={() => db.reminders.update(r.id!, { status: 'pending', dueAt: now() + 3600000, trigger: undefined })}><span className="ic">⏰</span><T ur="ایک گھنٹہ بعد" en="+1 hour" /></button>
           </div>
         </div>
       ))}
@@ -475,13 +536,14 @@ function FiredReminder({ r, onClose, go }: { r: Reminder; onClose: () => void; g
   const lateMs = (r.firedAt ?? now()) - r.dueAt
   return (
     <Modal onClose={onClose}>
-      <span className="emoji">{isHerd ? `${ICON.rem}${ICON.herd}` : ICON.rem}</span>
+      <span className="emoji">{r.trigger ? `${ICON.trip}${ICON.rem}` : isHerd ? `${ICON.rem}${ICON.herd}` : ICON.rem}</span>
+      {r.trigger && <Lab ic="🏁" ur="سفر ختم — واپسی کی یاد دہانی" en="Trip ended — your on-the-way-back reminder" />}
       <div className="ur big" dir="auto">{r.text}</div>
       {r.source === 'user' && lateMs > LATE_MS && <p className="warn-line"><Lab ic="⏰" ur={`یہ ${spanUr(lateMs)} دیر سے دکھائی جا رہی ہے — وقت پر ایپ بند تھی۔`} en={`Shown ${spanEn(lateMs)} late — the app was closed when it was due.`} /></p>}
       {isHerd && <button className="big-btn herdc" onClick={() => { db.reminders.update(r.id!, { status: 'done' }); onClose(); go('herd') }}><I c="🔢" /><T ur="ابھی گنتی کریں" en="Count now" /></button>}
       <div className="rate">
         <button className="good" onClick={() => { db.reminders.update(r.id!, { status: 'done' }); onClose() }}><I c="✓" /><T ur="ٹھیک ہے" en="OK" /></button>
-        <button onClick={() => { db.reminders.update(r.id!, { status: 'pending', dueAt: now() + 3600000 }); onClose() }}><I c="⏰" /><T ur="بعد میں" en="Later" /></button>
+        <button onClick={() => { db.reminders.update(r.id!, { status: 'pending', dueAt: now() + 3600000, trigger: undefined }); onClose() }}><I c="⏰" /><T ur="بعد میں" en="Later" /></button>
       </div>
     </Modal>
   )
@@ -603,6 +665,7 @@ const RATING_UR = { good: 'اچھا', okay: 'ٹھیک', poor: 'کمزور' } as 
 const RATING_DOT = { good: '🟢', okay: '🟡', poor: '🔴' } as const
 function History() {
   const trips = useLiveQuery(() => db.trips.orderBy('startedAt').reverse().toArray()) ?? []
+  const counts = useLiveQuery(() => db.confirmations.filter(c => c.tripId !== undefined).toArray()) ?? []
   const [sel, setSel] = useState<number>()
   return (
     <div>
@@ -614,6 +677,7 @@ function History() {
             <span><T ur={agoUr(t.startedAt)} en={new Date(t.startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} /></span>
             <span className="trip-mid"><span className="num" dir="ltr">{fmtKm(t.distanceM ?? 0)}</span>
               <T ur={`${Math.round((t.endedAt! - t.startedAt) / 3600000 * 10) / 10} گھنٹے${t.direction ? ` · ${DIR_UR[t.direction as keyof typeof DIR_UR]}` : ''}`} en={`${Math.round((t.endedAt! - t.startedAt) / 3600000 * 10) / 10} h${t.direction ? ` · ${t.direction}` : ''}`} />
+              {counts.filter(c => c.tripId === t.id).map(c => <span key={c.id} className="came-home" dir="ltr">{SPECIES_IC[c.species]} {c.count}{c.expected !== undefined && c.expected !== c.count ? ` (${c.count - c.expected > 0 ? '+' : ''}${c.count - c.expected})` : ' ✓'}</span>)}
               {t.gapCount ? <span className="gap-flag"><Lab ic="⚠️" ur={`${t.gapCount} وقفہ`} en={`${t.gapCount} gap${t.gapCount > 1 ? 's' : ''}`} /></span> : null}</span>
             <span className={`chip ${t.rating ?? ''}`}>{t.rating ? <><I c={RATING_DOT[t.rating]} /><span className="ur">{RATING_UR[t.rating]}</span></> : '—'}</span>
           </button>

@@ -44,7 +44,13 @@ const h5 = await p.textContent('.answer.small'); step(5, 'place: ' + h5); expect
 await click('واپسی کا راستہ'); await p.waitForTimeout(1500)
 const h9 = await p.textContent('.answer.small'); step('8-9', 'way back: ' + h9); expect('8-9', h9.includes('ریکارڈ شدہ راستہ') && !h9.includes('ریکارڈ نہیں ہوا'), 'way back, no gap caveat'); await shot('09-way-back')
 // 6. End trip + rating
-await click('سفر ختم کریں'); await p.waitForSelector('.modal'); await shot('06-rate'); await p.locator('.rate .good').click(); await p.waitForTimeout(500)
+await click('سفر ختم کریں'); await p.waitForSelector('.modal'); await shot('06-rate'); await p.locator('.rate .good').click(); await p.waitForTimeout(600)
+// 6b. back home: count what came home (box empty, estimate only as a hint); matches → ✓
+const rc = (await p.locator('.modal').count()) ? await p.textContent('.modal') : ''; step('6b', 'return count: ' + rc)
+expect('6b', rc.includes('ریوڑ گن لیں') && (await p.inputValue('.modal input.num')) === '', 'return count asked, box not prefilled')
+await p.fill('.modal input.num', '47'); await click('گنتی محفوظ کریں'); await p.waitForTimeout(500)
+const rc2 = await p.textContent('.modal'); step('6b', 'result: ' + rc2); expect('6b', rc2.includes('اندازے کے مطابق'), 'matching count confirmed')
+await click('ٹھیک ہے'); await p.waitForTimeout(300)
 const d6 = await dump(); step(6, `db: trips=${JSON.stringify(d6.trips)} points=${d6.points.length}`)
 expect(6, d6.trips[0]?.endedAt && d6.trips[0].rating === 'good' && d6.trips[0].gapCount === 0, 'trip ended, rated, no gaps')
 // 7. Days later: ask about good grazing
@@ -131,6 +137,7 @@ expect('V1', await p.locator('.trip-screen').count() === 1, 'trip not ended befo
 await click('ہاں، ختم کریں'); await p.waitForTimeout(800)
 const v1c = (await p.locator('.modal').count()) ? await p.textContent('.modal') : ''; step('V1', 'after yes: ' + v1c)
 expect('V1', v1c.includes('چارہ کیسا تھا'), 'rating asked after voice end'); if (v1c) await click('چھوڑیں')
+await p.waitForTimeout(400); await dismissReminders()
 
 // A1/A2. AI fallback: an unfamiliar phrasing is handled by the on-device classifier (shown as a guess or as choices);
 // an out-of-scope health question is declined instead of answered with the herd count.
@@ -162,6 +169,27 @@ expect('T1', ft.endedAt === Math.max(...fpts.map(x => x.t)), 'trip ends at its l
 expect('T1', before.points.length === after.points.length, 'no new fixes appended to the forgotten trip')
 
 await p.waitForTimeout(500); await dismissReminders()
+// S1. The demo story: start by voice, mark water + shade, an "on the way back" reminder, way back, end by voice →
+// reminder fires at trip end → rating → count what came home (one goat short → flagged, not explained away).
+await dismissReminders(); await home(); await p.fill('.voice.big .askbar input', 'safar shuru karo'); await p.press('.voice.big .askbar input', 'Enter'); await p.waitForTimeout(1200)
+await p.getByText('200 m/s').click(); await p.waitForTimeout(1500)
+const tv = async q => { await p.fill('.trip-voice .askbar input', q); await p.press('.trip-voice .askbar input', 'Enter'); await p.waitForTimeout(900); return (await p.textContent('.trip-voice .answer')).trim() }
+const s1a = await tv('is jagah ko pani yaad rakho'); await p.waitForTimeout(1500); const s1b = await tv('is jagah ko saya yaad rakho')
+step('S1', `water: ${s1a.slice(0, 60)} | shade: ${s1b.slice(0, 60)}`); expect('S1', s1a.includes('💧') && s1b.includes('🌳'), 'water and shade places saved by voice')
+const s1c = await tv('wapsi par Karim chacha ki 4 bakriyan unke ghar chhodni hain yaad dilana'); step('S1', 'reminder read-back: ' + s1c)
+expect('S1', s1c.includes('سفر ختم ہونے پر'), 'reminder tied to trip end, read back'); await click('ہاں، درج کریں'); await p.waitForTimeout(400)
+const s1d = await tv('wapas ka rasta dikhao'); expect('S1', s1d.includes('ریکارڈ شدہ راستہ'), 'way back = own recorded trail')
+await tv('safar khatam'); await click('ہاں، ختم کریں'); await p.waitForTimeout(1000)
+const s1e = (await p.locator('.modal').count()) ? await p.textContent('.modal') : ''; step('S1', 'at trip end: ' + s1e); await shot('S1-trip-end-reminder')
+expect('S1', s1e.includes('Karim') && s1e.includes('سفر ختم'), 'on-the-way-back reminder fires first at trip end')
+await click('ٹھیک ہے'); await p.waitForTimeout(500); expect('S1', (await p.textContent('.modal')).includes('چارہ کیسا تھا'), 'then the rating'); await p.locator('.rate .good').click(); await p.waitForTimeout(600)
+const goatBox = p.locator('.modal input[aria-label="Goats count"]'); const est = +(await goatBox.getAttribute('placeholder')).replace(/\D/g, '')
+await goatBox.fill(String(est - 1)); await click('گنتی محفوظ کریں'); await p.waitForTimeout(500)
+const s1f = await p.textContent('.modal'); step('S1', 'came home: ' + s1f); await shot('S1-return-count')
+expect('S1', s1f.includes(`اندازہ ${est}`) && s1f.includes('1 کم') && s1f.includes('اندازہ نہیں لگاتا'), 'one short: shown and asked about, not guessed')
+await click('ٹھیک ہے'); await p.waitForTimeout(300); await home(); await click('پرانے سفر'); await p.waitForTimeout(500)
+const s1h = (await p.locator('.card.row.trip').first().textContent()); step('S1', 'history: ' + s1h); expect('S1', s1h.includes(`${est - 1} (-1)`), 'history shows what came home')
+
 // G1. Loading demo data while a trip is running must not leave a ghost trip writing to deleted records.
 await home(); await click('سفر شروع کریں'); await p.waitForTimeout(800); await p.getByText('200 m/s').click(); await p.waitForTimeout(1500)
 await settings(); await click('Load demo history'); await p.waitForTimeout(3000)

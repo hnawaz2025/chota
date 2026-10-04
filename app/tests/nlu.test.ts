@@ -56,6 +56,13 @@ const cases: [string, string, (i: any) => boolean][] = [
   ['garmi bahut hai nazdeek koi jagah batao jahan pani ho', 'plan_today', i => i.water && i.shade && i.near],
   ['mujhe batao kahan jaun bohot garmi hai paas mein koi jagah jahan pani bhi ho', 'plan_today', i => i.water && i.shade && i.near],
   ['اس جگہ کو پانی یاد رکھو', 'save_place', i => i.placeType === 'water'],
+  // demo story: a reminder for when the trip ends (drop the neighbour's goats off on the way back)
+  ['wapsi par Karim chacha ki 4 bakriyan unke ghar chhodni hain yaad dilana', 'reminder', i => i.onTripEnd],
+  ['واپسی پر کریم چاچا کی 4 بکریاں ان کے گھر چھوڑنی ہیں یاد دلانا', 'reminder', i => i.onTripEnd],
+  ['واپسی پر کریم کی بکریاں چھوڑنی ہیں', 'reminder', i => i.onTripEnd],
+  ['remind me on the way back to drop off the neighbour goats', 'reminder', i => i.onTripEnd],
+  ['کل صبح 6 بجے ٹیوب ویل جانا ہے', 'reminder', i => !i.onTripEnd],
+  ['واپسی کا راستہ دکھاؤ', 'way_back', () => true],
   ['گھر کس طرف ہے', 'home_distance', () => true],
   ['واپس کیسے جاؤں راستہ دکھاؤ', 'way_back', () => true],
   ['کل صبح ٹیوب ویل جانا ہے', 'reminder', () => true],
