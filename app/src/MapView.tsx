@@ -55,7 +55,7 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
   // init once
   useEffect(() => {
     if (!el.current || map.current) return
-    const m = L.map(el.current, { zoomControl: false, attributionControl: true, minZoom: 9, maxZoom: 17 })
+    const m = L.map(el.current, { zoomSnap: 0.25, zoomControl: false, attributionControl: true, minZoom: 9, maxZoom: 17 })
     map.current = m
     m.setView([29.5377, 65.9721], 12)
     metaP.then(mm => {
@@ -65,7 +65,8 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
     borderP.then(gj => L.geoJSON(gj, { style: { color: '#b3261e', weight: 2, dashArray: '6 6', fill: false }, interactive: false }).addTo(m))
     const vl = L.layerGroup()
     villagesP.then(vs => vs.forEach(v => L.marker([v.a, v.o], { icon: L.divIcon({ className: 'village', html: v.n, iconSize: [0, 0] }), interactive: false }).addTo(vl)))
-    const syncVillages = () => (m.getZoom() >= 13 ? vl.addTo(m) : vl.remove())
+    // Zoomed out, place names pile on top of each other: show icons only (highlighted places keep their names).
+    const syncVillages = () => { m.getZoom() >= 13 ? vl.addTo(m) : vl.remove(); m.getContainer().classList.toggle('z-low', m.getZoom() < 13) }
     m.on('zoomend', syncVillages); syncVillages()
     data.current = L.layerGroup().addTo(m)
     setReady(true)
@@ -103,7 +104,7 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
       if (hi) fitPts.push([p.lat, p.lon])
     }
     if (allTrips) (trips ?? []).forEach(({ pts }) => pts.forEach(p => fitPts.push([p.lat, p.lon])))
-    if (fitPts.length) m.fitBounds(L.latLngBounds(fitPts).pad(0.25), { maxZoom: 15 })
+    if (fitPts.length) m.fitBounds(L.latLngBounds(fitPts).pad(allTrips ? 0.06 : 0.25), { maxZoom: 15 })
     else if (fix) m.setView([fix.lat, fix.lon], Math.max(m.getZoom(), 13))
   }, [ready, trips, live?.length, liveTrip, home, places, focus, allTrips])
 

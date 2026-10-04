@@ -72,6 +72,37 @@ export async function loadDemo() {
   await place('کیکر کے درخت', 'shade', 0.9, -1, 25)
   await place('سفید پتھر', 'landmark', 4.5, 0.5, 44, undefined, east)
   await place('زیارت', 'landmark', -0.8, 2.6, 30)
+  // ---- longer trips (6-12 km out), each with the places noted on the way: mostly water ----
+  // loop(e, n): out to (e, n) km and back by a slightly different way, so out and return tracks don't overlap.
+  const loop = (e: number, n: number, w = 0.25): [number, number][] =>
+    [R, [e * 0.35 + n * w, n * 0.35 - e * w], [e * 0.7 + n * w * 0.6, n * 0.7 - e * w * 0.6], [e, n], [e * 1.04 - n * 0.08, n * 1.04 + e * 0.08], [e * 0.55 - n * w, n * 0.55 + e * w], R]
+  const north = await pastTrip(38, loop(0.8, 8.6), 7, 'good')
+  await place('شمالی کنواں', 'water', 0.5, 7.4, 38, 'ڈول اپنا لے جانا', north)
+  await place('اونچی گھاس', 'grazing', 0.9, 8.6, 38, undefined, north)
+  const ne = await pastTrip(28, loop(6.8, 7.2), 8, 'okay')
+  await place('بڑا نالہ', 'water', 6.4, 6.8, 28, 'بارش کے بعد ہی پانی ہوتا ہے', ne)
+  await place('ببول کا جھنڈ', 'shade', 7.1, 7.4, 28, undefined, ne)
+  const eastFar = await pastTrip(21, loop(10.6, -0.6, 0.15), 9, 'good')
+  await place('مشرقی چشمہ', 'water', 10.4, -0.8, 21, 'پانی صاف تھا', eastFar)
+  await place('ریتلا میدان', 'landmark', 7.8, 0.6, 21, undefined, eastFar)
+  await pastTrip(52, loop(8.5, 1.5), 8, 'poor')
+  const se = await pastTrip(17, loop(7.2, -6.8), 8, 'good')
+  await place('گاؤں کا تالاب', 'water', 6.8, -6.2, 17, 'گاؤں والوں کا، پوچھ کر', se)
+  await place('جھاڑیوں والی وادی', 'grazing', 7.5, -7.3, 17, undefined, se)
+  const southFar = await pastTrip(36, loop(1.4, -9.6, 0.2), 8, 'okay')
+  await place('جنوبی کاریز', 'water', 1.2, -9.4, 36, undefined, southFar)
+  await pastTrip(8, loop(1, -8.2), 7, 'good')
+  const sw = await pastTrip(30, loop(-5.8, -6.4), 7.5, 'poor')
+  await place('خشک ندی', 'water', -5.5, -6.1, 30, 'پانی نہیں تھا، خشک', sw)
+  const westFar = await pastTrip(24, loop(-10, 0.8, 0.15), 8.5, 'okay')
+  await place('مغربی ٹیوب ویل', 'water', -9.8, 0.6, 24, 'مالک سے اجازت لینی پڑی', westFar)
+  const nwFar = await pastTrip(14, loop(-6.6, 8), 9, 'good', [150, 200])   // second screen-off gap, far out
+  await place('پہاڑی چشمہ', 'water', -6.5, 7.8, 14, 'ٹھنڈا پانی', nwFar)
+  await place('پہاڑ کا سایہ', 'shade', -6, 8.3, 14, undefined, nwFar)
+  const mid = await pastTrip(5, loop(4.6, -3.6), 6, 'good')
+  await place('سبز پٹی', 'grazing', 4.5, -3.5, 5, 'نئی گھاس نکلی تھی', mid)
+  await pastTrip(41, loop(-3.5, 5.5), 6, 'okay')
+
   // herd: counted 8 days ago, changes since (estimate differs from count)
   await db.confirmations.bulkAdd([{ species: 'goat', count: 46, confirmedAt: now() - 8 * DAY, source: 'manual' }, { species: 'sheep', count: 18, confirmedAt: now() - 8 * DAY, source: 'manual' }])
   await db.herdEvents.bulkAdd([

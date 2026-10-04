@@ -118,6 +118,26 @@ _Last updated: 2026-10-03 · milestones 1–5 done + redesign merged · PWA is d
 - **Mic:** live transcript, failure reasons, falls back to the keyboard mic offline. Naming a place freezes the spot and pauses the demo walk.
 - **Deployment:** pushed to GitHub (`hnawaz2025/chota`) for Vercel (root directory `app`). Reviewer guide in `app/README.md`.
 
+## Later changes, part 2 (2026-10-03)
+- **Palette v2 merged:**
+  - dark charcoal by default, with a ☀️ sun-mode toggle
+  - colour only for meaning (brown = brand/primary action; green / amber / red = good / warning / bad); every emoji kept
+  - smaller header; "📴 آف لائن ✓" offline-ready badge; quieter home strip and examples; English a step smaller
+  - right-to-left input bar
+- **Test 7, AI intent classifier** (`ml/`, `app/src/intentModel.ts`):
+  - char n-gram TF-IDF + logistic regression, 23 commands, ~160 KB gzipped, ~0.1 ms per sentence
+  - rules go first; the AI is the fallback, with a "🤖 AI guess" tag, "did you mean" choices, and an out-of-scope veto
+  - Test 5 set: 95% → 98% correct, 0 wrong actions. See `ml/README.md`.
+- **"Where should I go today"** (`plan_today`):
+  - parses the herder's needs (water, heat/shade, not far) and answers only from their own records, with record ages
+  - picks water with good recent grazing nearby; explains a skipped closer water point
+  - always says today's conditions are unknown (not advice, not a forecast)
+- **Demo area:**
+  - 22 rated trips out to ~11 km in every direction (all inside Pakistan; the border is ≥26 km away), ~4.2k breadcrumbs, two screen-off gaps
+  - 25 places: 13 water (incl. a dry stream, a seasonal nala, a tube well needing permission), grazing, shade, landmarks
+  - herd history and a reminder
+  - The map shows icons only when zoomed out (names when zoomed in) and fits the trips tightly.
+
 ## Test results (final run, 2026-10-03)
 | Suite | Result |
 |---|---|
@@ -134,7 +154,7 @@ Failures hit and fixed along the way (all real bugs, not test noise):
 The only failure on the untouched baseline was "none": the old e2e had no assertions.
 
 ## Tests
-- `npm test`: 60/60 Urdu intent cases, 7 place-tag cases, plus 8 trail-gap unit tests. `tests/layout.mjs`: 0 violations.
+- `npm test`: 64/64 Urdu intent cases, 7 place-tag cases, plus 8 trail-gap unit tests. `tests/layout.mjs`: 0 violations.
 - `tests/e2e.mjs` (Playwright, production build, 390×844):
   - the 12 milestone steps
   - T1 forgotten trip, T2 gap drawn dotted, T3 stale real-GPS fix

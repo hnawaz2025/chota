@@ -393,3 +393,6 @@ details { color: var(--ink); }
 .askbar { direction: rtl; }
 .askbar input:placeholder-shown { direction: rtl; text-align: right; }
 .askbar .go { transform: scaleX(-1); }
+
+/* map: names only when zoomed in (or highlighted), so many places don't overlap */
+.z-low .pin.place:not(.hi) b { display: none; }
