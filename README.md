@@ -6,7 +6,7 @@ CHOTA remembers what a herder would otherwise have to keep in their head: where 
 shade, the way back home, what they need to do on the way back, and how many animals they have. It runs entirely on a
 cheap phone, with no internet and no server, and nothing ever leaves the device.
 
-> **Live app:** _add your Vercel link here_ · **Tech walkthrough (60 s):** _add your artifact link here_
+> **Live app:** [chota-iota.vercel.app](https://chota-iota.vercel.app) · **Tech walkthrough (60 s):** [How I built CHOTA](https://claude.ai/artifact/GMNr1YDXGTi6cCJwGAAYf2)
 
 ---
 
@@ -128,7 +128,7 @@ On realistic sentences the AI never trained on:
 
 ## Try it
 
-1. Open the live app on a phone (or a desktop browser in phone view).
+1. Open [chota-iota.vercel.app](https://chota-iota.vercel.app) on a phone (or a desktop browser in phone view).
 2. **Settings → Load demo history.** This loads a demo area around Kili Jamaldini, Nushki: 22 trips, water points,
    shade and a herd. Keep **Demo GPS** on.
 3. Tap the big mic, or type:
