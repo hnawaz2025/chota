@@ -55,6 +55,22 @@ function Lab({ ic, ...t }: { ic: string; ur: string; en?: string; big?: boolean;
   return <span className="lab" dir="rtl"><I c={ic} /><T {...t} /></span>
 }
 
+/**
+ * "Works offline" badge: only once the service worker actually holds the app (controller set, or ready resolved).
+ * Before that a quiet ⏳ while it caches; nothing at all where service workers don't exist. Never claims offline early.
+ */
+function useOfflineReady(): 'none' | 'caching' | 'ready' {
+  const sw = typeof navigator !== 'undefined' ? navigator.serviceWorker : undefined
+  const [s, setS] = useState<'none' | 'caching' | 'ready'>(() => !sw ? 'none' : sw.controller ? 'ready' : 'caching')
+  useEffect(() => {
+    if (!sw || s === 'ready') return
+    let alive = true
+    sw.ready.then(() => { if (alive) setS('ready') }).catch(() => {})
+    return () => { alive = false }
+  }, [sw, s])
+  return s
+}
+
 function useFix() { const [f, setF] = useState<Fix>(); useEffect(() => onFix(setF), []); return f }
 function useTick(ms = 1000) { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s(x => x + 1), ms); return () => clearInterval(i) }, [ms]) }
 
@@ -95,6 +111,7 @@ export default function App() {
 function Header({ onHome, screen }: { onHome: () => void; screen: Screen }) {
   const off = clockOffsetDays()
   const [sun, setSun] = useState(() => lsGet(THEME_KEY) === 'sun')
+  const offline = useOfflineReady()
   const toggleSun = () => { const s = !sun; setSun(s); applyTheme(s); lsSet(THEME_KEY, s ? 'sun' : 'dark') }
   return (
     <header dir="rtl">
@@ -103,7 +120,8 @@ function Header({ onHome, screen }: { onHome: () => void; screen: Screen }) {
       <div className="badges" dir="ltr">
         {isSimulated() && <span className="badge demo">DEMO GPS</span>}
         {off > 0 && <span className="badge demo">+{off}d</span>}
-        <span className="badge off">{navigator.onLine ? 'online' : 'offline ✓'}</span>
+        {offline === 'ready' && <span className="badge off" title="offline ✓ — CHOTA works without internet">📴 آف لائن ✓</span>}
+        {offline === 'caching' && <span className="badge off caching" title="Saving CHOTA for offline use…">⏳</span>}
       </div>
       <button className="sun" onClick={toggleSun} aria-pressed={sun} aria-label={sun ? 'Dark mode' : 'Sun mode (bright light)'}>{sun ? '🌙' : '☀️'}</button>
     </header>

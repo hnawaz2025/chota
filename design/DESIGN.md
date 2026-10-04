@@ -365,6 +365,34 @@ only).
 The spacing tokens (§4a) are unchanged. `tests/layout.mjs` now runs **dark (default) and sun mode** at 390×844 and
 360×740, and reports **0 violations** in all four combinations.
 
+### v2.1: the mic is the focus (user feedback)
+The user asked for a smaller header, "offline" instead of "online", a smaller home strip and examples box, and
+slightly smaller English, so the eye goes to the big mic and the Urdu.
+
+| Element | Before | After |
+|---|---|---|
+| Header height | 54px | 44px |
+| Wordmark | 21.6px | 17.6px |
+| DEMO GPS / +Nd pills | 11.5px text | 9.9px text (still solid yellow, dark ink) |
+| Back / ☀️ buttons | 52×52 / 48×44 | 48×44 / 44×36 |
+| English subtitles | 12.5px (big: 13.6px; tags 10.9px) | **11.5px** (big: 12.5px; tags and screen note 11px). Never under 11px; the 8px Urdu → English gap is unchanged |
+| Home strip | 76px, 2px strong border, 27px number, 18.4px Urdu | 69px, 1px quiet border, 21.6px number, 16px Urdu (a stale fix still gets the 2px dashed border) |
+| Examples box | 78px, filled surface | 69px, transparent with a thin line, muted text until opened |
+| Big mic | top at 158px | top at 141px (moved up by the smaller header and strip) |
+
+- **Network badge → offline-ready badge.** The header now shows **"📴 آف لائن ✓"** (title: "offline ✓ — CHOTA works
+  without internet").
+  - It appears only once the service worker actually holds the app (`navigator.serviceWorker.controller` is set, or
+    `serviceWorker.ready` has resolved).
+  - Until then it shows a quiet dashed "⏳", and nothing where service workers don't exist. It never claims offline
+    before the cache exists.
+  - Live network state is no longer shown in the header.
+  - The badge has no hue (thin white outline): it is reassurance, not an alert.
+- **AI fallback (Test 7) in Palette v2:**
+  - "Did you mean" `.choice` buttons use the one secondary style (surface-2, thin line, icon above Urdu above
+    English).
+  - The "🤖 AI کا اندازہ" tag is muted text with no new colour.
+
 ### Unsure / to validate
 - **Dark default in direct sun.** A dark theme is harder to read in glare than a light one, which is why sun mode
   exists. Field-test whether herders find the ☀️ toggle, and whether sun mode should be the default during the day.
