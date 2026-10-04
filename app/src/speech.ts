@@ -13,7 +13,7 @@ export function speak(ur: string) {
   try {
     if (!hasUrduVoice()) return false
     speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(ur.replace(/[⚠️"()]/g, ' ')); if (urVoice) u.voice = urVoice; u.lang = urVoice?.lang ?? 'ur-PK'; u.rate = 0.95
+    const u = new SpeechSynthesisUtterance(ur.replace(/\u26A0\uFE0F?|["()]/g, ' ')); if (urVoice) u.voice = urVoice; u.lang = urVoice?.lang ?? 'ur-PK'; u.rate = 0.95
     speechSynthesis.speak(u); return true
   } catch { return false }
 }

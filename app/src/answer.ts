@@ -7,7 +7,7 @@ import type { HerdEventType } from './db'
 import type { Species } from './db'
 import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
 import { lastFix, activeTrip, currentFixState, startTrip, endTrip, type Fix } from './gps'
-import { splitTrail, spanUr, spanEn, fixState } from './trail'
+import { splitTrail, spanUr, spanEn, fixState, calendarDaysAgo } from './trail'
 import { herdStatus, trackedSpecies, confirmCount, countUr, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN } from './herd'
 
 export interface MapFocus { tripIds?: number[]; placeIds?: number[]; homeLine?: boolean; wayBack?: boolean }
@@ -86,9 +86,11 @@ const ASSUMED_WHEN = {
 } as const
 /** Every historical answer is about what CHOTA recorded, never a claim of complete history. */
 const REC_UR = 'میرے ریکارڈ میں', REC_EN = 'In my records'
-export const agoUr = (t: number) => { const d = Math.floor((now() - t) / DAY); return d <= 0 ? 'آج' : d === 1 ? 'کل' : `${d} دن پہلے` }
-export const agoEn = (t: number) => { const d = Math.floor((now() - t) / DAY); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago` }
-const durUr = (ms: number) => { const h = Math.floor(ms / 3600000), m = Math.round(ms % 3600000 / 60000); return h ? `${h} گھنٹے ${m} منٹ` : `${m} منٹ` }
+/** Calendar days, not 24-hour blocks: last evening's trip is "کل" this morning, not "آج". */
+const daysAgo = (t: number) => calendarDaysAgo(t, now())
+export const agoUr = (t: number) => { const d = daysAgo(t); return d <= 0 ? 'آج' : d === 1 ? 'کل' : `${d} دن پہلے` }
+export const agoEn = (t: number) => { const d = daysAgo(t); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago` }
+const durUr = (ms: number) => { const h = Math.floor(ms / 3600000), m = Math.round(ms % 3600000 / 60000); return h ? `${h} ${h === 1 ? 'گھنٹہ' : 'گھنٹے'} ${m} منٹ` : `${m} منٹ` }
 const durEn = (ms: number) => { const h = Math.floor(ms / 3600000), m = Math.round(ms % 3600000 / 60000); return h ? `${h} h ${m} min` : `${m} min` }
 export function dueUr(t: number) {
   const d = new Date(t), today = new Date(now()); today.setHours(0, 0, 0, 0)
@@ -361,7 +363,7 @@ async function run(intent: Intent, text: string, places: Place[]): Promise<Answe
       const t = good[0], tp = await placesOfTrip(t)
       const where = t.direction ? `${DIR_UR[t.direction as keyof typeof DIR_UR]}، گھر سے تقریباً ${fmtKmUr(t.furthestFromHomeM ?? 0)}` : ''
       const whereEn = t.direction ? ` — ${t.direction}, about ${fmtKm(t.furthestFromHomeM ?? 0)} from home` : ''
-      return A(`${REC_UR} آخری بار اچھا چارہ ${agoUr(t.startedAt)} درج ہوا — ${where}۔${tp.length ? ` اس سفر میں آپ نے "${tp.map(p => p.name).join('"، "')}" محفوظ کیا تھا۔` : ''} (یہ اُس دن کی آپ کی اپنی رائے ہے۔)` +
+      return A(`${REC_UR} آخری بار اچھا چارہ ${agoUr(t.startedAt)} درج ہوا${where ? ` — ${where}` : ''}۔${tp.length ? ` اس سفر میں آپ نے "${tp.map(p => p.name).join('"، "')}" محفوظ کیا تھا۔` : ''} (یہ اُس دن کی آپ کی اپنی رائے ہے۔)` +
         (good.length > 1 ? ` کل ${good.length} سفر اچھے درج ہیں۔` : '') + unr.ur,
         `${REC_EN}, good grazing was last noted ${agoEn(t.startedAt)}${whereEn}.${tp.length ? ` You saved "${tp.map(p => p.name).join('", "')}" on that trip.` : ''} (Your own rating from that day.)${unr.en}`,
         { tripIds: good.slice(0, 3).map(x => x.id!), placeIds: [...tp, ...gp].map(p => p.id!) })

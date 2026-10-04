@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { splitTrail, fixState, isForgotten, GAP_MS, FIX_STALE_MS } from '../src/trail.ts'
+import { splitTrail, fixState, isForgotten, calendarDaysAgo, spanUr, GAP_MS, FIX_STALE_MS } from '../src/trail.ts'
 
 const MIN = 60000, T0 = new Date('2026-10-03T08:00:00').getTime()
 const HOME = { lat: 29.53766, lon: 65.97213 }
@@ -61,4 +61,15 @@ test('forgotten trip: long idle or very long open', () => {
   assert.equal(isForgotten(T0, T0 + 30 * MIN, T0 + 3 * 60 * MIN), true)        // 2.5 h since last point
   assert.equal(isForgotten(T0, undefined, T0 + 3 * 60 * MIN), true)             // never recorded a point
   assert.equal(isForgotten(T0, T0 + 15 * 60 * MIN, T0 + 15.5 * 60 * MIN), true) // open 15.5 h
+})
+
+test('days ago counts calendar days: last evening is yesterday this morning', () => {
+  const morning = new Date('2026-10-04T09:00:00').getTime()
+  assert.equal(calendarDaysAgo(new Date('2026-10-03T18:00:00').getTime(), morning), 1)   // 15 h ago, but yesterday
+  assert.equal(calendarDaysAgo(new Date('2026-10-04T00:30:00').getTime(), morning), 0)
+  assert.equal(calendarDaysAgo(new Date('2026-09-27T23:59:00').getTime(), morning), 7)
+})
+
+test('Urdu spans: singular hour', () => {
+  assert.equal(spanUr(60 * MIN), '1 گھنٹہ'); assert.equal(spanUr(3 * 60 * MIN), '3 گھنٹے'); assert.equal(spanUr(5 * MIN), '5 منٹ')
 })

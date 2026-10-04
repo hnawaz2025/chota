@@ -22,10 +22,11 @@ function drawTrail(g: L.LayerGroup, pts: Pt[], startT: number, endT: number, col
   for (const gp of tr.gaps) if (gp.from && gp.to)
     L.polyline([ll(gp.from), ll(gp.to)], gapStyle(color)).bindTooltip('ریکارڈ نہیں ہوا · not recorded').addTo(g)
 }
+/** Place names come from the herder's typing or voice: escape them before they go into marker HTML. */
+const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 const icon = (html: string, cls = 'pin') => L.divIcon({ html, className: cls, iconSize: [30, 30], iconAnchor: [15, 28] })
 
-let meta: { bounds: [[number, number], [number, number]]; date: string } | undefined
-const metaP = fetch(`${BASE}data/basemap.json`).then(r => r.json()).then(m => (meta = m))
+const metaP = fetch(`${BASE}data/basemap.json`).then(r => r.json()) as Promise<{ bounds: [[number, number], [number, number]]; date: string }>
 const villagesP = fetch(`${BASE}data/villages.json`).then(r => r.json()) as Promise<{ n: string; a: number; o: number }[]>
 const borderP = fetch(`${BASE}data/pakistan.geojson`).then(r => r.json())
 
@@ -66,7 +67,7 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
     const vl = L.layerGroup()
     villagesP.then(vs => vs.forEach(v => L.marker([v.a, v.o], { icon: L.divIcon({ className: 'village', html: v.n, iconSize: [0, 0] }), interactive: false }).addTo(vl)))
     // Zoomed out, place names pile on top of each other: show icons only (highlighted places keep their names).
-    const syncVillages = () => { m.getZoom() >= 13 ? vl.addTo(m) : vl.remove(); m.getContainer().classList.toggle('z-low', m.getZoom() < 13) }
+    const syncVillages = () => { if (m.getZoom() >= 13) vl.addTo(m); else vl.remove(); m.getContainer().classList.toggle('z-low', m.getZoom() < 13) }
     m.on('zoomend', syncVillages); syncVillages()
     data.current = L.layerGroup().addTo(m)
     setReady(true)
@@ -85,28 +86,35 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
     }
     if (live?.length && liveTrip) {
       drawTrail(g, live, liveTrip.startedAt, now(), LIVE, focus?.wayBack ? 6 : 4, CASING)
-      const lastPt = live[live.length - 1]
-      // Still unrecorded since the last breadcrumb, but we know where we are now: dotted, not solid.
-      if (fix && fixState(fix, now()).state !== 'stale' && fix.t - lastPt.t > GAP_MS)
-        L.polyline([ll(lastPt), ll(fix)], gapStyle(LIVE)).addTo(g)
       if (focus?.wayBack) { fitPts.push(...live.map(ll)); L.marker(ll(live[0]), { icon: icon('🚩') }).addTo(g) }
     }
     if (home) {
       L.marker([home.lat, home.lon], { icon: icon('🏠') }).addTo(g)
-      if (focus?.homeLine && fix) {
-        L.polyline([[fix.lat, fix.lon], [home.lat, home.lon]], { color: '#fff', weight: 2, dashArray: '4 8' }).addTo(g)
-        fitPts.push([home.lat, home.lon], [fix.lat, fix.lon])
-      }
+      if (focus?.homeLine && fix) fitPts.push([home.lat, home.lon], [fix.lat, fix.lon])
     }
     for (const p of places ?? []) {
       const hi = focus?.placeIds?.includes(p.id!)
-      L.marker([p.lat, p.lon], { icon: icon(`<span>${placeIcon(p.type)}</span><b>${p.name}</b>`, hi ? 'pin place hi' : 'pin place') }).addTo(g)
+      L.marker([p.lat, p.lon], { icon: icon(`<span>${placeIcon(p.type)}</span><b>${esc(p.name)}</b>`, hi ? 'pin place hi' : 'pin place') }).addTo(g)
       if (hi) fitPts.push([p.lat, p.lon])
     }
     if (allTrips) (trips ?? []).forEach(({ pts }) => pts.forEach(p => fitPts.push([p.lat, p.lon])))
     if (fitPts.length) m.fitBounds(L.latLngBounds(fitPts).pad(allTrips ? 0.06 : 0.25), { maxZoom: 15 })
     else if (fix) m.setView([fix.lat, fix.lon], Math.max(m.getZoom(), 13))
+    // Deliberately not on every fix: re-fitting the map each second would fight the herder's own panning.
+    // Position-following lines are in the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, trips, live?.length, liveTrip, home, places, focus, allTrips])
+
+  // Lines that follow the current position (home line, still-unrecorded tail) live in their own layer, redrawn on each
+  // fix without re-fitting the map, so they never point from where the herder used to be.
+  useEffect(() => {
+    const m = map.current; if (!ready || !m) return
+    const dyn = L.layerGroup().addTo(m)
+    if (fix && home && focus?.homeLine) L.polyline([[fix.lat, fix.lon], [home.lat, home.lon]], { color: '#fff', weight: 2, dashArray: '4 8' }).addTo(dyn)
+    const lastPt = live?.at(-1)
+    if (fix && lastPt && liveTrip && fixState(fix, now()).state !== 'stale' && fix.t - lastPt.t > GAP_MS) L.polyline([ll(lastPt), ll(fix)], gapStyle(LIVE)).addTo(dyn)
+    return () => { dyn.remove() }
+  }, [ready, fix, home, focus, live, liveTrip])
 
   // my position
   useEffect(() => {
@@ -121,4 +129,3 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
   return <div ref={el} className={className} />
 }
 
-export const basemapMeta = () => meta

@@ -8,6 +8,7 @@ const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceSc
   permissions: ['geolocation'], geolocation: { latitude: 29.5600, longitude: 65.9400, accuracy: 12 } })
 const p = await ctx.newPage()
 const errors = [], fails = []
+p.on('dialog', d => d.accept())   // 'Load demo history' / 'Clear all data' ask first; the test says yes
 p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && errors.push(m.text()))
 const shot = async n => p.screenshot({ path: `${OUT}/${n}.png` })
 const step = (n, s) => console.log(`[${n}] ${s.replace(/\s+/g, ' ').slice(0, 300)}`)
@@ -100,6 +101,10 @@ const nEv = (await dump()).herdEvents.length
 await home(); const hh1 = await ask('دو بکریاں بیچیں'); step('H1', 'read-back: ' + hh1)
 await click('نہیں، غلط ہے'); await p.waitForTimeout(500)
 expect('H1', (await dump()).herdEvents.length === nEv, 'rejected sale not written')
+// H1b. A double tap on ✓ saves once.
+const nEv2 = (await dump()).herdEvents.length
+await home(); await ask('تین بکریاں خریدیں'); await p.getByText('ہاں، درج کریں').filter({ visible: true }).first().dblclick(); await p.waitForTimeout(700)
+const added = (await dump()).herdEvents.length - nEv2; step('H1b', `double tap saved ${added} event(s)`); expect('H1b', added === 1, 'double tap on ✓ writes once')
 // H2. Species with no baseline + no number said: assumed qty is called out; after "yes" the change is visible, total unknown.
 await home(); const hh2 = await ask('bher mar gayi'); step('H2', 'read-back: ' + hh2)
 expect('H2', hh2.includes('ایک مانی'), 'assumed quantity called out')
@@ -157,6 +162,12 @@ expect('T1', ft.endedAt === Math.max(...fpts.map(x => x.t)), 'trip ends at its l
 expect('T1', before.points.length === after.points.length, 'no new fixes appended to the forgotten trip')
 
 await p.waitForTimeout(500); await dismissReminders()
+// G1. Loading demo data while a trip is running must not leave a ghost trip writing to deleted records.
+await home(); await click('سفر شروع کریں'); await p.waitForTimeout(800); await p.getByText('200 m/s').click(); await p.waitForTimeout(1500)
+await settings(); await click('Load demo history'); await p.waitForTimeout(3000)
+const g1 = await dump(), tripIds = new Set(g1.trips.map(t => t.id)), orphans = g1.points.filter(x => !tripIds.has(x.tripId)).length
+await home(); const tileTxt = await p.locator('.tile.trip').textContent()
+step('G1', `orphan points ${orphans}; trip tile: ${tileTxt}`); expect('G1', orphans === 0 && !tileTxt.includes('جاری'), 'no ghost trip after loading demo data')
 // T2. Demo history includes a trip with a 50-min screen-off gap: listed as gap, drawn dotted, caveated.
 await settings(); await click('Load demo history'); await p.waitForTimeout(800); await home(); await click('پرانے سفر'); await p.waitForTimeout(500)
 const rows = await p.locator('.card.row.trip').allTextContents(); const gapRow = rows.findIndex(r => r.includes('gap'))

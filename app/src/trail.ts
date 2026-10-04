@@ -66,6 +66,11 @@ export function isForgotten(startedAt: number, lastPointT: number | undefined, n
 }
 
 // ---------- wording ----------
+/** Calendar days between t and now (local midnight to midnight), not 24-hour blocks. */
+export function calendarDaysAgo(t: number, nowMs: number) {
+  const a = new Date(nowMs), b = new Date(t); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0)
+  return Math.round((a.getTime() - b.getTime()) / 86400000)
+}
 export function spanUr(ms: number) {
   const m = Math.round(ms / 60000)
   const h = Math.round(m / 60)

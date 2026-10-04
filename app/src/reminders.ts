@@ -21,7 +21,13 @@ async function proactive() {
 }
 
 /** Fire due reminders: returns those newly fired so the UI can show / speak / notify. */
+let checking = false
 export async function checkReminders(): Promise<Reminder[]> {
+  if (checking) return []   // a slow check must not overlap the next tick and fire the same reminder twice
+  checking = true
+  try { return await fireDue() } finally { checking = false }
+}
+async function fireDue(): Promise<Reminder[]> {
   await proactive()
   const due = await db.reminders.where('status').equals('pending').filter(r => r.dueAt <= now()).toArray()
   for (const r of due) await db.reminders.update(r.id!, { status: 'fired', firedAt: now() })
@@ -33,7 +39,7 @@ function notify(r: Reminder) {
   const body = now() - r.dueAt > 10 * 60000 && r.source === 'user' ? `(دیر سے) ${r.text}` : r.text
   try {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-    navigator.serviceWorker?.ready.then(reg => reg.showNotification('CHOTA', { body, tag: `r${r.id}`, icon: '/icon-192.png' }))
+    navigator.serviceWorker?.ready.then(reg => reg.showNotification('CHOTA', { body, tag: `r${r.id}`, icon: `${import.meta.env.BASE_URL}icon-192.png` }))
       .catch(() => new Notification('CHOTA', { body }))
   } catch { /* notifications unavailable */ }
 }

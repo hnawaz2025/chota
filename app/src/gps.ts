@@ -21,7 +21,7 @@ let simTimer: number | undefined
 let refreshTimer: number | undefined
 
 const lsGet = (k: string) => { try { return localStorage.getItem(k) } catch { return null } }
-const lsSet = (k: string, v: string | null) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch { /* ignore */ } }
+const lsSet = (k: string, v: string | null) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v) } catch { /* ignore */ } }
 
 export const isSimulated = () => lsGet('chota.sim') !== '0'   // demo default: simulated
 export function setSimulated(on: boolean) { lsSet('chota.sim', on ? '1' : '0'); startPositioning() }
@@ -163,6 +163,13 @@ export async function checkOpenTrip(): Promise<OpenTrip | undefined> {
   if (!isForgotten(trip.startedAt, lastPointT, now())) return
   holdRecording = true
   return { tripId: activeTripId, startedAt: trip.startedAt, lastPointT }
+}
+/** All data was wiped (Clear all / Load demo): forget the running trip so no fixes are written to a deleted trip. */
+export async function forgetActiveTrip() {
+  activeTripId = undefined; lastSaved = undefined; holdRecording = false; lsSet('chota.activeTrip', null)
+  try { await wakeLock?.release() } catch { /* ignore */ }
+  wakeLock = undefined
+  if (isSimulated()) simSet({ paused: true, reset: true })
 }
 /** Herder says they are still on this trip: keep recording; the silence stays in the record as a gap. */
 export function resumeTrip() { holdRecording = false; holdScreen() }

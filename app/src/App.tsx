@@ -340,10 +340,13 @@ const EXAMPLES: [string, string][] = [
 /** ✓ writes the read-back record, ✗ writes nothing. Shared by every place that can create a pending write. */
 function ConfirmRow({ p, onResult }: { p: PendingWrite; onResult: (a: Answer) => void }) {
   const lbl = CONFIRM_LABEL[p.kind] ?? CONFIRM_LABEL.default
+  // One write per read-back: a quick double tap on ✓ must not save the herd change or reminder twice.
+  const [busy, setBusy] = useState(false)
+  const once = (f: () => Promise<Answer> | Answer) => async () => { if (busy) return; setBusy(true); onResult(await f()) }
   return (
     <div className="rate confirm">
-      <button className="good" onClick={async () => onResult(await commitPending(p))}><I c="✓" /><T ur={lbl[0]} en={lbl[1]} /></button>
-      <button className="poor" onClick={() => onResult(rejectPending(p))}><I c="✗" /><T ur={lbl[2]} en={lbl[3]} /></button>
+      <button className="good" disabled={busy} onClick={once(() => commitPending(p))}><I c="✓" /><T ur={lbl[0]} en={lbl[1]} /></button>
+      <button className="poor" disabled={busy} onClick={once(() => rejectPending(p))}><I c="✗" /><T ur={lbl[2]} en={lbl[3]} /></button>
     </div>)
 }
 const CONFIRM_LABEL: Record<string, [string, string, string, string]> = {
@@ -370,9 +373,11 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
   useEffect(() => { if (cur) ansRef.current?.scrollIntoView({ block: cur.a.pending ? 'end' : 'nearest' }) }, [cur])
   /** Offline / unsupported: the phone keyboard's own mic (Gboard Urdu voice typing) fills the same box. */
   const toKeyboardMic = () => { stopListening(true); setKbHint(true); input.current?.focus() }
-  useEffect(() => { if (!heard) return; const t = setTimeout(() => { ask(heard); setHeard(undefined) }, 900); return () => clearTimeout(t) }, [heard])
-  useEffect(() => () => stopListening(true), [])
   const show = (q: string, a: Answer) => { setCur({ q, a }); speak(a.ur); onMap?.(a.map); if (a.action) onAction(a.action) }
+  const ask = async (text: string, forced?: string) => { if (!text.trim()) return; const a = await answer(text, forced); setQ(''); show(text, a) }
+  useEffect(() => { if (!heard) return; const t = setTimeout(() => { ask(heard); setHeard(undefined) }, 900); return () => clearTimeout(t) // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heard])
+  useEffect(() => () => stopListening(true), [])
   const mic = () => {
     if (listening) { stopListening(); setListening(false); return }   // button off now; words heard so far are used
     setMicErr(undefined); setKbHint(false); setQ('')
@@ -384,7 +389,6 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
       else if (e) setMicErr(LISTEN_ERROR[e])
     }, t => setQ(t))) setListening(true)
   }
-  const ask = async (text: string, forced?: string) => { if (!text.trim()) return; const a = await answer(text, forced); setQ(''); show(text, a) }
   const feat = cur ? FEATURE_OF[cur.a.intent] : undefined
   return (
     <div className={big ? 'voice big' : 'voice'}>
@@ -452,7 +456,8 @@ function Reminders() {
       {rs.length === 0 && <p className="muted note"><Lab ic="🔔" ur="کوئی یاد دہانی نہیں" en="No reminders" /></p>}
       {rs.map(r => (
         <div key={r.id} className={`card rem ${r.status} ${r.source}`}>
-          <div className="when"><span className="ic">{r.status === 'fired' ? '🔔' : '⏰'}</span><T ur={r.status === 'fired' ? 'ابھی' : dueUr(r.dueAt)} en={r.status === 'fired' ? 'now' : dueEn(r.dueAt)} emph />{r.source === 'system' && <span className="badge">CHOTA</span>}</div>
+          <div className="when"><span className="ic">{r.status === 'fired' ? '🔔' : '⏰'}</span>{/* "now" only while it is fresh; an old fired reminder shows when it was due */}
+            <T ur={r.status === 'fired' && now() - (r.firedAt ?? 0) < 3600000 ? 'ابھی' : dueUr(r.dueAt)} en={r.status === 'fired' && now() - (r.firedAt ?? 0) < 3600000 ? 'now' : dueEn(r.dueAt)} emph />{r.source === 'system' && <span className="badge">CHOTA</span>}</div>
           <div className="ur what" dir="auto">{r.text}</div>
           <div className="actions">
             <button className="done" onClick={() => db.reminders.update(r.id!, { status: 'done' })}><span className="ic">✓</span><T ur="ہو گیا" en="Done" /></button>
@@ -623,7 +628,6 @@ function Settings() {
   const home = useLiveQuery(getHome)
   const [, force] = useState(0)
   const [en, setEn] = useState(lsGet('chota.en') !== '0')
-  const Row = ({ children }: { children: ReactNode }) => <div className="card set">{children}</div>
   return (
     <div className="pad">
       <Row>
@@ -640,7 +644,7 @@ function Settings() {
       <Row>
         <b>Demo controls</b>
         <div className="chips">
-          <button onClick={async () => { await loadDemo(); force(x => x + 1) }}>Load demo history</button>
+          <button onClick={async () => { if (confirm('Load demo history? This replaces all CHOTA data on this device with demo data.')) { await loadDemo(); force(x => x + 1) } }}>Load demo history</button>
           {[1, 3, 7, 14].map(d => <button key={d} onClick={() => { shiftDays(d); force(x => x + 1) }}>+{d} days</button>)}
           <button onClick={() => { shiftDays(0); force(x => x + 1) }}>Reset clock</button>
           <button className="danger" onClick={async () => { if (confirm('Delete all CHOTA data on this device?')) { await clearAll(); force(x => x + 1) } }}>Clear all data</button>
@@ -654,6 +658,8 @@ function Settings() {
     </div>
   )
 }
+
+function Row({ children }: { children: ReactNode }) { return <div className="card set">{children}</div> }
 
 function Modal({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}>{children}</div></div>

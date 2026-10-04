@@ -3,6 +3,7 @@ import { db, setHome, type Place } from './db'
 import { now, DAY } from './clock'
 import { compass, bearingDeg, distanceM } from './geo'
 import { splitTrail } from './trail'
+import { forgetActiveTrip } from './gps'
 
 export const DEMO_HOME = { lat: 29.53766, lon: 65.97213 }   // Kili Jamaldini, Nushki (GeoNames)
 
@@ -117,5 +118,5 @@ export async function loadDemo() {
 export async function clearAll() {
   await Promise.all([db.confirmations.clear(), db.herdEvents.clear(), db.trips.clear(), db.points.clear(),
     db.places.clear(), db.reminders.clear(), db.settings.clear()])
-  try { localStorage.removeItem('chota.activeTrip') } catch { /* ignore */ }
+  await forgetActiveTrip()
 }
