@@ -123,6 +123,12 @@ await click('ہاں، ختم کریں'); await p.waitForTimeout(800)
 const v1c = (await p.locator('.modal').count()) ? await p.textContent('.modal') : ''; step('V1', 'after yes: ' + v1c)
 expect('V1', v1c.includes('چارہ کیسا تھا'), 'rating asked after voice end'); if (v1c) await click('چھوڑیں')
 
+// A1/A2. AI fallback: an unfamiliar phrasing is handled by the on-device classifier (shown as a guess or as choices);
+// an out-of-scope health question is declined instead of answered with the herd count.
+await dismissReminders(); const a1 = await ask('pichli dafa kitne ghante bahar raha'); step('A1', 'ai: ' + a1)
+expect('A1', (await p.locator('.voice.big .ai-tag, .voice.big .choices').count()) > 0 && !a1.includes('آخری تصدیق'), 'unfamiliar phrasing goes to the classifier, not the herd count')
+const a2 = await ask('بکری کو بخار ہے کیا کروں'); step('A2', 'oos: ' + a2); expect('A2', a2.includes('CHOTA کا کام نہیں'), 'animal-health question declined as out of scope')
+
 // ---------------- Honest Trail ----------------
 // T1. Forgotten trip: start, walk a bit, "come back" a day later. App must ask, and end it at the last recorded point.
 await home(); await click('سفر شروع کریں'); await p.waitForTimeout(800); await p.getByText('200 m/s').click(); await p.waitForTimeout(2000)
@@ -155,6 +161,8 @@ if (gapRow >= 0) { await p.locator('.card.row.trip').nth(gapRow).click(); await 
 const dotted = await p.locator('path[stroke-dasharray="1 9"]').count(); step('T2', `dotted gap paths: ${dotted}`); expect('T2', dotted >= 1, 'gap drawn dotted'); await shot('T2-gap-dotted')
 
 // T3. Real GPS, then the fix goes stale (clock +1 day without a new fix): answers say "last known", saving is refused.
+// a fresh position (the emulated fix carries the time it was set; the run is now > 2 min, which would make it stale)
+await ctx.setGeolocation({ latitude: 29.5600, longitude: 65.9400, accuracy: 12 })
 await settings(); await p.locator('label', { hasText: 'Demo GPS' }).locator('input').click(); await p.waitForTimeout(2000)
 await home(); const t3a = await ask('Ghar kitni door hai?'); step('T3', 'fresh: ' + t3a); expect('T3', t3a.includes('کلومیٹر') && !t3a.includes('آخری GPS'), 'fresh real-GPS answer')
 await settings(); await click('+1 days'); await home()

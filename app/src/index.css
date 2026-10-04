@@ -348,3 +348,8 @@ details { color: var(--ink); }
   .herd-nums b { font-size: 2.4rem; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; } }
+
+/* AI fallback (Test 7) */
+.ai-tag { margin: 6px 0 0; display: flex; justify-content: center; }
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.choice { min-height: 64px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }

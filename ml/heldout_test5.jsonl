@@ -1,0 +1,41 @@
+{"text": "آج تین بکریاں بیچیں پینتالیس ہزار میں", "label": "herd_event_sale", "id": "u01"}
+{"text": "کل رات ایک بکری نے دو بچے دیے", "label": "herd_event_birth", "id": "u02"}
+{"text": "ایک بھیڑ مر گئی", "label": "herd_event_death", "id": "u03"}
+{"text": "بھوسے کی دس بوریاں لیں اٹھارہ ہزار روپے ادھار پر", "label": "out_of_scope", "id": "u04"}
+{"text": "سب جانوروں کو کیڑوں کی دوائی دی", "label": "out_of_scope", "id": "u05"}
+{"text": "کل ملا کے 42 بکریاں اور 17 بھیڑیں ہیں", "label": "herd_confirm", "id": "u06"}
+{"text": "دو دنبے بیچے بیس بیس ہزار کے", "label": "herd_event_sale", "id": "u07"}
+{"text": "پرسوں منڈی سے ایک بکرا خریدا بائیس ہزار کا", "label": "herd_event_purchase", "id": "u08"}
+{"text": "اگلے ہفتے سب کو پی پی آر کا ٹیکہ لگوانا ہے یاد دلانا", "label": "reminder", "id": "u09"}
+{"text": "پانی کا ٹینکر منگوایا تین ہزار پانچ سو", "label": "out_of_scope", "id": "u10"}
+{"text": "بھیڑیا ایک بکری لے گیا", "label": "herd_event_loss", "id": "u11"}
+{"text": "دو دن پہلے ایک میمنا مر گیا تھا اور آج بیمار بکری کو انجکشن لگوایا", "label": "herd_event_death", "id": "u12"}
+{"text": "چرانے لے کر جا رہا ہوں تین دن بعد واپس آؤں گا", "label": "start_trip", "id": "u13"}
+{"text": "واپس آ گیا ہوں سب جانور ٹھیک ہیں", "label": "end_trip", "id": "u14"}
+{"text": "ڈیڑھ لاکھ میں اونٹ بیچا", "label": "herd_event_sale", "id": "u15"}
+{"text": "عید کے لیے ایک دنبہ ذبح کیا", "label": "herd_event_slaughter", "id": "u16"}
+{"text": "دکاندار کو دس ہزار ادھار واپس کیے", "label": "out_of_scope", "id": "u17"}
+{"text": "بکری بیچی", "label": "herd_event_sale", "id": "u18"}
+{"text": "آج پانچ میمنے پیدا ہوئے", "label": "herd_event_birth", "id": "u19"}
+{"text": "کھل اور دانہ لیا بارہ ہزار کا", "label": "out_of_scope", "id": "u20"}
+{"text": "جمعہ کو ایک گائے خریدی دو لاکھ دس ہزار کی", "label": "herd_event_purchase", "id": "u22"}
+{"text": "گنتی کی تو اکتالیس بکریاں نکلیں", "label": "herd_confirm", "id": "u23"}
+{"text": "بیمار دنبے کو ڈاکٹر نے انجکشن لگایا دو ہزار لگے", "label": "out_of_scope", "id": "u24"}
+{"text": "کل چرانے جانا ہے صبح جلدی اٹھانا", "label": "reminder", "id": "u25"}
+{"text": "تین بکریاں چوری ہو گئیں", "label": "herd_event_loss", "id": "u26"}
+{"text": "بیس دن بعد دوبارہ کیڑوں کی دوائی دینی ہے", "label": "reminder", "id": "u27"}
+{"text": "ایک بکری اور دو بھیڑیں سردی سے مر گئیں", "label": "herd_event_death", "id": "u28"}
+{"text": "aaj 2 bakriyan bechi 50 hazar ki", "label": "herd_event_sale", "id": "u29"}
+{"text": "kal bhoosa liya 6000 ka udhaar", "label": "out_of_scope", "id": "u30"}
+{"text": "ek bakri ne bacha diya", "label": "herd_event_birth", "id": "u31"}
+{"text": "total 38 bakriyan aur 20 bher", "label": "herd_confirm", "id": "u32"}
+{"text": "dumba khareeda 35000", "label": "herd_event_purchase", "id": "u33"}
+{"text": "parson sab ko teeka lagwana hai", "label": "reminder", "id": "u34"}
+{"text": "do bakriyan mar gayi bimari se", "label": "herd_event_death", "id": "u35"}
+{"text": "dawai li 1500 ki aur bakri ko di", "label": "out_of_scope", "id": "u36"}
+{"text": "teen bher beche sava lakh mein", "label": "herd_event_sale", "id": "u37"}
+{"text": "pani tanker 4000", "label": "out_of_scope", "id": "u38"}
+{"text": "کل ایک بکری لی", "label": "herd_event_purchase", "id": "u39"}
+{"text": "بکریوں کے لیے چوکر لیا ساڑھے چار ہزار کا", "label": "out_of_scope", "id": "u40"}
+{"text": "تین نہیں چار بکریاں بیچیں", "label": "herd_event_sale", "id": "u41"}
+{"text": "السلام علیکم", "label": "out_of_scope", "id": "u42"}

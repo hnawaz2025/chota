@@ -1,0 +1,113 @@
+{"text": "ابھی ہم گھر سے کتنا ہٹ کر ہیں", "label": "home_distance"}
+{"text": "گھر جانے کے لیے کس طرف منہ کروں", "label": "home_distance"}
+{"text": "apna dera yahan se kitne fasle par hai", "label": "home_distance"}
+{"text": "گھر والی سمت کون سی ہے", "label": "home_distance"}
+{"text": "واپس گاؤں کتنے میل ہے", "label": "home_distance"}
+{"text": "جدھر سے آئے تھے وہی رستہ چاہیے", "label": "way_back"}
+{"text": "mujhe wohi rasta dikhao jis se aaya", "label": "way_back"}
+{"text": "لوٹنے کا راستہ بتا دو", "label": "way_back"}
+{"text": "میں بھٹک گیا ہوں واپس کیسے نکلوں", "label": "way_back"}
+{"text": "پیچھے والا راستہ نقشے پر دکھاؤ", "label": "way_back"}
+{"text": "ریوڑ کو باہر لے جا رہا ہوں ریکارڈ شروع کر دو", "label": "start_trip"}
+{"text": "جانوروں کو چرانے نکل پڑا", "label": "start_trip"}
+{"text": "aaj ka chakkar shuru karte hain", "label": "start_trip"}
+{"text": "اب پہاڑ کی طرف جا رہے ہیں سفر چالو کرو", "label": "start_trip"}
+{"text": "نکلنے کا وقت ہو گیا ٹرپ چلاؤ", "label": "start_trip"}
+{"text": "واپس ڈیرے پہنچ گئے سفر روک دو", "label": "end_trip"}
+{"text": "aaj ka kaam khatam trip rok do", "label": "end_trip"}
+{"text": "ہم آ گئے ہیں ریکارڈنگ ختم", "label": "end_trip"}
+{"text": "جانور باڑے میں آ گئے", "label": "end_trip"}
+{"text": "چکر پورا ہو گیا بند کر دو", "label": "end_trip"}
+{"text": "یہ والی جگہ پانی والا نالہ نام سے رکھ لو", "label": "save_place"}
+{"text": "is jaga ko achi ghaas wali jagah yaad karlo", "label": "save_place"}
+{"text": "یہاں کنواں ہے اس جگہ کو محفوظ کرو", "label": "save_place"}
+{"text": "اس مقام کو بڑا پتھر کہہ کر یاد رکھنا", "label": "save_place"}
+{"text": "یہ جگہ میرے لیے نشان لگا دو", "label": "save_place"}
+{"text": "کالا پہاڑ یہاں سے کتنے فاصلے پر ہے", "label": "place_distance"}
+{"text": "tubewell yahan se kitna door", "label": "place_distance"}
+{"text": "چشمہ کس جانب ہے", "label": "place_distance"}
+{"text": "قادر کا کنواں کتنا دور رہ گیا", "label": "place_distance"}
+{"text": "نالہ کدھر کو ہے", "label": "place_distance"}
+{"text": "کس جگہ جانوروں نے پیٹ بھر کر کھایا تھا", "label": "good_grazing"}
+{"text": "achi charagah ka pata batao", "label": "good_grazing"}
+{"text": "گھاس زیادہ کہاں تھی پچھلی دفعہ", "label": "good_grazing"}
+{"text": "کون سی طرف چارہ بہتر ملا تھا", "label": "good_grazing"}
+{"text": "جہاں اچھی چرائی ہوئی تھی وہ دکھاؤ", "label": "good_grazing"}
+{"text": "کیا اس جگہ میرا پہلے آنا ہوا ہے", "label": "been_here"}
+{"text": "pehle kabhi idhar aaya hoon", "label": "been_here"}
+{"text": "یہاں میں کب آیا تھا آخری بار", "label": "been_here"}
+{"text": "یہ مقام پہلے بھی ریکارڈ ہوا ہے", "label": "been_here"}
+{"text": "کیا ہم یہاں سے پہلے گزرے ہیں", "label": "been_here"}
+{"text": "مغرب والی سائیڈ پر آخری بار کب گیا", "label": "last_trip_dir"}
+{"text": "junoob mein pichli dafa kab charaya", "label": "last_trip_dir"}
+{"text": "شمال کی جانب کب گئے تھے", "label": "last_trip_dir"}
+{"text": "مشرق میں آخری چکر کب لگا", "label": "last_trip_dir"}
+{"text": "جنوب مغرب میں پچھلی بار کب", "label": "last_trip_dir"}
+{"text": "اس مہینے میں کتنی دفعہ نکلا", "label": "trips_this_month"}
+{"text": "is maah kitne chakkar lage", "label": "trips_this_month"}
+{"text": "رواں مہینے کتنے ٹرپ ہوئے", "label": "trips_this_month"}
+{"text": "یہ مہینہ کتنے سفر", "label": "trips_this_month"}
+{"text": "اس مہینے کتنی مرتبہ ریوڑ لے کر گیا", "label": "trips_this_month"}
+{"text": "کل کا سفر کتنے گھنٹے چلا", "label": "last_trip_duration"}
+{"text": "pichli dafa kitne ghante bahar raha", "label": "last_trip_duration"}
+{"text": "آخری چکر میں کتنا وقت لگا", "label": "last_trip_duration"}
+{"text": "پچھلے سفر میں کتنا پیدل چلا", "label": "last_trip_duration"}
+{"text": "پچھلا ٹرپ کتنی دیر رہا", "label": "last_trip_duration"}
+{"text": "پرسوں دوپہر کو ویکسین والے سے ملنا ہے", "label": "reminder"}
+{"text": "kal 5 baje mujhe yaad dila dena pani bharna hai", "label": "reminder"}
+{"text": "جمعرات کو اون کاٹنے والے کو بلانا یاد کرانا", "label": "reminder"}
+{"text": "تین گھنٹے بعد بکریوں کو پانی پلانا ہے", "label": "reminder"}
+{"text": "اگلے ہفتے منڈی جانا مت بھولنے دینا", "label": "reminder"}
+{"text": "میرے سارے یاد دلانے والے کام سناؤ", "label": "reminders_list"}
+{"text": "kaunsi yaad dahani lagi hui hai", "label": "reminders_list"}
+{"text": "آگے کون کون سے کام ہیں", "label": "reminders_list"}
+{"text": "یاد دہانیوں کی فہرست دکھاؤ", "label": "reminders_list"}
+{"text": "کیا کچھ یاد رکھنے کا کہا تھا", "label": "reminders_list"}
+{"text": "ابھی گنا تو پینتیس بکریاں نکلیں", "label": "herd_confirm"}
+{"text": "meri 22 bheden hain ginti ki", "label": "herd_confirm"}
+{"text": "سب ملا کر اکتالیس جانور ہیں", "label": "herd_confirm"}
+{"text": "بکریوں کی گنتی چوالیس ہے", "label": "herd_confirm"}
+{"text": "آج کی گنتی بیس بھیڑیں اور دس بکریاں", "label": "herd_confirm"}
+{"text": "ایک دنبہ قصاب کو دے دیا پیسوں میں", "label": "herd_event_sale"}
+{"text": "do bakre mandi mein nikal diye", "label": "herd_event_sale"}
+{"text": "تین بکریاں سیٹھ کو فروخت", "label": "herd_event_sale"}
+{"text": "آج منڈی میں دو بھیڑیں بکیں", "label": "herd_event_sale"}
+{"text": "بکرا بیچا ہے آج", "label": "herd_event_sale"}
+{"text": "دو نئی بکریاں ریوڑ میں شامل کیں خرید کر", "label": "herd_event_purchase"}
+{"text": "ek dumba khareed liya", "label": "herd_event_purchase"}
+{"text": "منڈی سے ایک اونٹنی لی", "label": "herd_event_purchase"}
+{"text": "پڑوسی سے تین بھیڑیں خریدی", "label": "herd_event_purchase"}
+{"text": "نئے میمنے خرید کر لایا", "label": "herd_event_purchase"}
+{"text": "رات کو بکری نے دو بچے جنے", "label": "herd_event_birth"}
+{"text": "bher ne memna diya", "label": "herd_event_birth"}
+{"text": "آج تین میمنوں کی پیدائش ہوئی", "label": "herd_event_birth"}
+{"text": "اونٹنی نے بچہ دیا ہے", "label": "herd_event_birth"}
+{"text": "گائے سوئی ہے بچھڑا ہوا", "label": "herd_event_birth"}
+{"text": "ایک بکری سردی سے مر گئی", "label": "herd_event_death"}
+{"text": "do bheden mar gai", "label": "herd_event_death"}
+{"text": "میمنا نہیں بچا", "label": "herd_event_death"}
+{"text": "بوڑھا بکرا مر گیا آج", "label": "herd_event_death"}
+{"text": "دنبہ رات کو مرا", "label": "herd_event_death"}
+{"text": "دو بکریاں پہاڑ میں رہ گئیں ملیں نہیں", "label": "herd_event_loss"}
+{"text": "bakri ko bheriya utha le gaya", "label": "herd_event_loss"}
+{"text": "ایک بھیڑ لاپتہ ہے", "label": "herd_event_loss"}
+{"text": "رات کو چور تین بکرے لے گئے", "label": "herd_event_loss"}
+{"text": "میمنا کہیں گم ہو گیا", "label": "herd_event_loss"}
+{"text": "شادی پر ایک بکرا کاٹا", "label": "herd_event_slaughter"}
+{"text": "eid par dumba qurban kiya", "label": "herd_event_slaughter"}
+{"text": "مہمان آئے تھے ایک بکری ذبح کر دی", "label": "herd_event_slaughter"}
+{"text": "عقیقے کے لیے دو بکرے ذبح", "label": "herd_event_slaughter"}
+{"text": "دنبہ قربانی کیا", "label": "herd_event_slaughter"}
+{"text": "ٹوٹل کتنے جانور بنتے ہیں", "label": "herd_status"}
+{"text": "bakriyan kul kitni hongi", "label": "herd_status"}
+{"text": "ریوڑ میں اب کتنے جانور ہیں", "label": "herd_status"}
+{"text": "بھیڑیں کتنی رہ گئیں", "label": "herd_status"}
+{"text": "میرے جانوروں کی تعداد کیا ہے", "label": "herd_status"}
+{"text": "بکری کے پیٹ میں درد ہے", "label": "out_of_scope"}
+{"text": "aaj garmi kitni hai", "label": "out_of_scope"}
+{"text": "وعلیکم السلام", "label": "out_of_scope"}
+{"text": "دنبے کا بھاؤ کیا چل رہا ہے", "label": "out_of_scope"}
+{"text": "کس طرف بارش ہوئی ہے", "label": "out_of_scope"}
+{"text": "bakri ko injection laga diya", "label": "out_of_scope"}
+{"text": "میرا موبائل چارج کرو", "label": "out_of_scope"}
+{"text": "سب سے ہری گھاس کس علاقے میں ہوگی", "label": "out_of_scope"}
