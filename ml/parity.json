@@ -2,301 +2,301 @@
 {
 "text": "ابھی ہم گھر سے کتنا ہٹ کر ہیں",
 "label": "home_distance",
-"p": 0.8164
+"p": 0.8061
 },
 {
 "text": "گھر جانے کے لیے کس طرف منہ کروں",
 "label": "home_distance",
-"p": 0.7163
+"p": 0.6661
 },
 {
 "text": "apna dera yahan se kitne fasle par hai",
 "label": "home_distance",
-"p": 0.3686
+"p": 0.3151
 },
 {
 "text": "گھر والی سمت کون سی ہے",
 "label": "home_distance",
-"p": 0.876
+"p": 0.8898
 },
 {
 "text": "واپس گاؤں کتنے میل ہے",
 "label": "way_back",
-"p": 0.3538
+"p": 0.3589
 },
 {
 "text": "جدھر سے آئے تھے وہی رستہ چاہیے",
 "label": "way_back",
-"p": 0.8784
+"p": 0.8813
 },
 {
 "text": "mujhe wohi rasta dikhao jis se aaya",
 "label": "way_back",
-"p": 0.9344
+"p": 0.9331
 },
 {
 "text": "لوٹنے کا راستہ بتا دو",
 "label": "way_back",
-"p": 0.9279
+"p": 0.9369
 },
 {
 "text": "میں بھٹک گیا ہوں واپس کیسے نکلوں",
 "label": "way_back",
-"p": 0.5891
+"p": 0.5196
 },
 {
 "text": "پیچھے والا راستہ نقشے پر دکھاؤ",
 "label": "way_back",
-"p": 0.9709
+"p": 0.9752
 },
 {
 "text": "ریوڑ کو باہر لے جا رہا ہوں ریکارڈ شروع کر دو",
 "label": "start_trip",
-"p": 0.9972
+"p": 0.9968
 },
 {
 "text": "جانوروں کو چرانے نکل پڑا",
 "label": "start_trip",
-"p": 0.5872
+"p": 0.563
 },
 {
 "text": "aaj ka chakkar shuru karte hain",
 "label": "start_trip",
-"p": 0.9072
+"p": 0.9146
 },
 {
 "text": "اب پہاڑ کی طرف جا رہے ہیں سفر چالو کرو",
 "label": "start_trip",
-"p": 0.5408
+"p": 0.5398
 },
 {
 "text": "نکلنے کا وقت ہو گیا ٹرپ چلاؤ",
 "label": "end_trip",
-"p": 0.3244
+"p": 0.3641
 },
 {
 "text": "واپس ڈیرے پہنچ گئے سفر روک دو",
 "label": "end_trip",
-"p": 0.9445
+"p": 0.9434
 },
 {
 "text": "aaj ka kaam khatam trip rok do",
 "label": "end_trip",
-"p": 0.7932
+"p": 0.8027
 },
 {
 "text": "ہم آ گئے ہیں ریکارڈنگ ختم",
 "label": "end_trip",
-"p": 0.8619
+"p": 0.8439
 },
 {
 "text": "جانور باڑے میں آ گئے",
 "label": "herd_event_sale",
-"p": 0.5888
+"p": 0.5602
 },
 {
 "text": "چکر پورا ہو گیا بند کر دو",
 "label": "end_trip",
-"p": 0.9588
+"p": 0.964
 },
 {
 "text": "یہ والی جگہ پانی والا نالہ نام سے رکھ لو",
 "label": "save_place",
-"p": 0.9546
+"p": 0.9495
 },
 {
 "text": "is jaga ko achi ghaas wali jagah yaad karlo",
 "label": "save_place",
-"p": 0.6978
+"p": 0.6873
 },
 {
 "text": "یہاں کنواں ہے اس جگہ کو محفوظ کرو",
 "label": "save_place",
-"p": 0.9719
+"p": 0.9707
 },
 {
 "text": "اس مقام کو بڑا پتھر کہہ کر یاد رکھنا",
 "label": "save_place",
-"p": 0.9156
+"p": 0.921
 },
 {
 "text": "یہ جگہ میرے لیے نشان لگا دو",
 "label": "save_place",
-"p": 0.437
+"p": 0.4208
 },
 {
 "text": "کالا پہاڑ یہاں سے کتنے فاصلے پر ہے",
 "label": "place_distance",
-"p": 0.8759
+"p": 0.8658
 },
 {
 "text": "tubewell yahan se kitna door",
 "label": "place_distance",
-"p": 0.6268
+"p": 0.6287
 },
 {
 "text": "چشمہ کس جانب ہے",
 "label": "place_distance",
-"p": 0.9168
+"p": 0.9187
 },
 {
 "text": "قادر کا کنواں کتنا دور رہ گیا",
 "label": "place_distance",
-"p": 0.8264
+"p": 0.8407
 },
 {
 "text": "نالہ کدھر کو ہے",
 "label": "place_distance",
-"p": 0.922
+"p": 0.9205
 },
 {
 "text": "کس جگہ جانوروں نے پیٹ بھر کر کھایا تھا",
 "label": "out_of_scope",
-"p": 0.2256
+"p": 0.2059
 },
 {
 "text": "achi charagah ka pata batao",
-"label": "good_grazing",
-"p": 0.1682
+"label": "save_place",
+"p": 0.1709
 },
 {
 "text": "گھاس زیادہ کہاں تھی پچھلی دفعہ",
 "label": "good_grazing",
-"p": 0.4502
+"p": 0.5048
 },
 {
 "text": "کون سی طرف چارہ بہتر ملا تھا",
 "label": "good_grazing",
-"p": 0.7285
+"p": 0.7737
 },
 {
 "text": "جہاں اچھی چرائی ہوئی تھی وہ دکھاؤ",
 "label": "good_grazing",
-"p": 0.9905
+"p": 0.9908
 },
 {
 "text": "کیا اس جگہ میرا پہلے آنا ہوا ہے",
 "label": "been_here",
-"p": 0.7696
+"p": 0.7456
 },
 {
 "text": "pehle kabhi idhar aaya hoon",
 "label": "been_here",
-"p": 0.8684
+"p": 0.8596
 },
 {
 "text": "یہاں میں کب آیا تھا آخری بار",
 "label": "last_trip_dir",
-"p": 0.7378
+"p": 0.7395
 },
 {
 "text": "یہ مقام پہلے بھی ریکارڈ ہوا ہے",
 "label": "been_here",
-"p": 0.673
+"p": 0.637
 },
 {
 "text": "کیا ہم یہاں سے پہلے گزرے ہیں",
 "label": "been_here",
-"p": 0.903
+"p": 0.9139
 },
 {
 "text": "آج تین بکریاں بیچیں پینتالیس ہزار میں",
 "label": "herd_confirm",
-"p": 0.4854
+"p": 0.4794
 },
 {
 "text": "کل رات ایک بکری نے دو بچے دیے",
 "label": "herd_event_birth",
-"p": 0.7156
+"p": 0.7099
 },
 {
 "text": "ایک بھیڑ مر گئی",
 "label": "herd_event_death",
-"p": 0.9803
+"p": 0.9854
 },
 {
 "text": "بھوسے کی دس بوریاں لیں اٹھارہ ہزار روپے ادھار پر",
 "label": "out_of_scope",
-"p": 0.7577
+"p": 0.7788
 },
 {
 "text": "سب جانوروں کو کیڑوں کی دوائی دی",
 "label": "out_of_scope",
-"p": 0.9715
+"p": 0.9744
 },
 {
 "text": "کل ملا کے 42 بکریاں اور 17 بھیڑیں ہیں",
 "label": "herd_confirm",
-"p": 0.9428
+"p": 0.9367
 },
 {
 "text": "دو دنبے بیچے بیس بیس ہزار کے",
 "label": "herd_event_sale",
-"p": 0.8383
+"p": 0.8618
 },
 {
 "text": "پرسوں منڈی سے ایک بکرا خریدا بائیس ہزار کا",
 "label": "herd_event_purchase",
-"p": 0.7219
+"p": 0.7236
 },
 {
 "text": "اگلے ہفتے سب کو پی پی آر کا ٹیکہ لگوانا ہے یاد دلانا",
 "label": "reminder",
-"p": 0.7421
+"p": 0.7321
 },
 {
 "text": "پانی کا ٹینکر منگوایا تین ہزار پانچ سو",
 "label": "reminder",
-"p": 0.2675
+"p": 0.2861
 },
 {
 "text": "بھیڑیا ایک بکری لے گیا",
 "label": "herd_event_loss",
-"p": 0.9691
+"p": 0.9654
 },
 {
 "text": "دو دن پہلے ایک میمنا مر گیا تھا اور آج بیمار بکری کو انجکشن لگوایا",
 "label": "herd_event_death",
-"p": 0.5895
+"p": 0.5985
 },
 {
 "text": "چرانے لے کر جا رہا ہوں تین دن بعد واپس آؤں گا",
 "label": "start_trip",
-"p": 0.7982
+"p": 0.7956
 },
 {
 "text": "واپس آ گیا ہوں سب جانور ٹھیک ہیں",
 "label": "end_trip",
-"p": 0.6582
+"p": 0.6882
 },
 {
 "text": "ڈیڑھ لاکھ میں اونٹ بیچا",
 "label": "herd_event_sale",
-"p": 0.6964
+"p": 0.7349
 },
 {
 "text": "عید کے لیے ایک دنبہ ذبح کیا",
 "label": "herd_event_slaughter",
-"p": 0.9815
+"p": 0.9834
 },
 {
 "text": "دکاندار کو دس ہزار ادھار واپس کیے",
 "label": "out_of_scope",
-"p": 0.8053
+"p": 0.7779
 },
 {
 "text": "بکری بیچی",
 "label": "herd_event_sale",
-"p": 0.8712
+"p": 0.8858
 },
 {
 "text": "آج پانچ میمنے پیدا ہوئے",
 "label": "herd_event_birth",
-"p": 0.9409
+"p": 0.942
 },
 {
 "text": "کھل اور دانہ لیا بارہ ہزار کا",
 "label": "herd_event_purchase",
-"p": 0.1899
+"p": 0.1983
 }
 ]

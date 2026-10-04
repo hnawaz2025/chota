@@ -129,7 +129,8 @@ T = {
   'آج کہاں جاؤں', 'آج ریوڑ کہاں لے جاؤں', 'آج کدھر چراؤں', 'پانی کہاں ملے گا', 'آج کہاں چرانا چاہیے', 'گرمی ہے قریب کہاں جاؤں',
   'زیادہ دور نہیں جا سکتا کہاں جاؤں', '{sp} کو پانی چاہیے کہاں لے جاؤں', 'آج کون سی جگہ ٹھیک رہے گی', 'پیاسے جانوروں کو کدھر لے جاؤں',
   'آج کس طرف جانا بہتر ہے', 'پانی اور چارہ دونوں کہاں ملیں گے', 'دھوپ بہت ہے سایہ والی جگہ کہاں ہے', 'قریب میں پانی کہاں ہے',
-  'aaj kahan jaun', 'aaj rewar kahan le jaun', 'pani kahan milega', 'garmi hai qareeb kahan jaun', 'zyada door nahi ja sakta kahan jaun',
+  'آج کس طرف جاؤں', 'گرمی ہے کس طرف جاؤں', '{sp} کو پانی پلانے کس طرف لے جاؤں', 'ریوڑ کو کس طرف لے جاؤں', 'آج کس جگہ چراؤں',
+  'aaj kis taraf jaun', 'garmi hai kis taraf jaun', 'aaj kahan jaun', 'aaj rewar kahan le jaun', 'pani kahan milega', 'garmi hai qareeb kahan jaun', 'zyada door nahi ja sakta kahan jaun',
   '{spr} ko pani chahiye kahan le jaun', 'aaj kidhar charaun', 'where should i go today', 'where can i find water nearby'],
  'out_of_scope': [  # greetings, cut features (health, prices, forecasts), chit-chat
   'السلام علیکم', 'کیسے ہو', 'شکریہ', 'خدا حافظ', 'تمہارا نام کیا ہے', 'گانا سناؤ', 'کل بارش ہو گی', 'آج موسم کیسا ہے', 'گرمی بہت ہے',
@@ -143,7 +144,7 @@ T = {
 # ---------- augmentation ----------
 PRE = ['', '', '', 'بھائی ', 'یار ', 'ذرا ', 'اچھا ', 'چھوٹا ', 'سنو ', 'chota ', 'yaar ', 'acha ']
 POST = ['', '', '', ' ؟', ' بتاؤ', ' جی', ' نا', ' please', ' yaar']
-CONFUSE = [('ی', 'ے'), ('ے', 'ی'), ('ہ', 'ھ'), ('ز', 'ذ'), ('س', 'ص'), ('ت', 'ط'), ('ح', 'ہ'), ('ک', 'ق'), ('ا', 'آ'), ('ں', 'ن'), ('ئ', 'ی'),
+CONFUSE = [('آ', 'ا'), ('ڑ', 'ر'), ('ی', 'ے'), ('ے', 'ی'), ('ہ', 'ھ'), ('ز', 'ذ'), ('س', 'ص'), ('ت', 'ط'), ('ح', 'ہ'), ('ک', 'ق'), ('ا', 'آ'), ('ں', 'ن'), ('ئ', 'ی'),
            ('aa', 'a'), ('ee', 'i'), ('oo', 'u'), ('kh', 'k'), ('h', ''), ('i', 'e')]
 
 def noisy(t):

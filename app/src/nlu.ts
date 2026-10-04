@@ -124,7 +124,7 @@ export function parseWhen(text: string, toks: string[], nowMs: number): When {
   } else if (toks.includes('پرسوں') || toks.includes('parson') || has(text, 'day after tomorrow')) days = 2
   else if (toks.includes('کل') || toks.includes('kal') || toks.includes('tomorrow')) days = 1
   else if (has(text, 'اگلے ہفتے', 'agle hafte', 'next week')) days = 7
-  else if (toks.includes('آج') || toks.includes('aaj') || toks.includes('today') || toks.includes('tonight')) days = 0
+  else if (toks.includes('آج') || toks.includes('اج') || toks.includes('aaj') || toks.includes('aj') || toks.includes('today') || toks.includes('tonight')) days = 0
   else for (const [w, wd] of Object.entries(WEEKDAYS)) if (toks.includes(w)) { days = ((wd - d.getDay() + 7) % 7) || 7; break }
 
   const part = PART.find(([ws]) => ws.some(w => toks.includes(w)))?.[1]
@@ -188,7 +188,10 @@ export interface HerdEventParse { species: Species; type: HerdEventType; qty: nu
 
 /** What the herder said they need today. CHOTA answers from their own records only (no advice, no forecast). */
 export interface PlanNeeds { water: boolean; shade: boolean; near: boolean }
-const PLAN_WORDS = ['کہاں جاؤں', 'کدھر جاؤں', 'کہاں جاوں', 'کہاں لے جاؤں', 'کہاں چراؤں', 'کدھر چراؤں', 'کہاں چرانا', 'پانی کہاں ملے', 'کہاں جائیں',
+/** "Where / which way should I go (with the herd)": a go-verb plus a where-word. Going home is way_back / home_distance instead. */
+const GO_VERBS = ['جاؤں', 'جاوں', 'جائیں', 'جاؤ', 'جانا', 'لے جاؤں', 'لے کر جاؤں', 'چراؤں', 'jana', 'jaun', 'jaon', 'jaoon', 'jayen', 'le jaun', 'charaun', 'go', 'take']
+const WHERE_WORDS = ['کہاں', 'کدھر', 'کس طرف', 'کس جگہ', 'کونسی طرف', 'کون سی طرف', 'kahan', 'kidhar', 'kis taraf', 'kis jagah', 'konsi taraf', 'where', 'which way']
+const PLAN_WORDS = ['کس طرف جاؤں', 'کس طرف جاوں', 'kis taraf jaun', 'کہاں جاؤں', 'کدھر جاؤں', 'کہاں جاوں', 'کہاں لے جاؤں', 'کہاں چراؤں', 'کدھر چراؤں', 'کہاں چرانا', 'پانی کہاں ملے', 'کہاں جائیں',
   'kahan jaun', 'kahan jaon', 'kahan jaoon', 'kidhar jaun', 'kahan le jaun', 'kahan charaun', 'kahan charana', 'pani kahan milega', 'kahan jayen',
   'where should i go', 'where to go', 'where should i graze', 'where can i find water']
 export function planNeeds(text: string): PlanNeeds {
@@ -210,7 +213,7 @@ const LATER_WORDS = ['یاد', 'yaad', 'yad', 'remind', 'کل', 'kal', 'پرسو
 /** Explicit "remind me": always a reminder, even if phrased as a question. */
 const REMIND = ['یاد دلا', 'یاد کرا', 'yaad dila', 'yad dila', 'remind']
 /** A question is asking about records, not setting a reminder ("کتنی ہے" is not "کرنی ہے"). */
-const QUESTION = ['کتنی', 'کتنا', 'کتنے', 'کیا', 'کہاں', 'کب', 'کیسے', 'کون', 'kitni', 'kitna', 'kitne', 'kya', 'kahan', 'kab', 'kaise', 'kaun', 'how', 'what', 'where', 'when']
+const QUESTION = ['کتنی', 'کتنا', 'کتنے', 'کیا', 'کہاں', 'کب', 'کیسے', 'کون', 'کس', 'کدھر', 'kitni', 'kitna', 'kitne', 'kya', 'kahan', 'kab', 'kaise', 'kaun', 'kis', 'kidhar', 'how', 'what', 'where', 'when', 'which']
 /** "جانا ہے" / "karni hai": an infinitive + hai = something to do later. Matched per word, never on a question word. */
 function isTodo(toks: string[]) {
   return toks.some((t, i) => ['ہے', 'ہیں', 'hai', 'hain'].includes(toks[i + 1]) && !QUESTION.includes(t) && /(نا|نی|نے|na|ni|ne|naa)$/.test(t) && t.length > 2)
@@ -256,7 +259,8 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
     return { kind: 'save_place', name, placeType: placeTypeOf(name) ?? 'other' }
   }
   // 1b. where to go today: answered from the herder's own records
-  if (has(text, ...PLAN_WORDS)) return { kind: 'plan_today', ...planNeeds(raw) }
+  if (has(text, ...PLAN_WORDS) || (has(text, ...GO_VERBS) && has(text, ...WHERE_WORDS) && !has(text, 'واپس', 'wapas', 'گھر', 'ghar', 'home')))
+    return { kind: 'plan_today', ...planNeeds(raw) }
   // 2. trip control, now (not "later": that is a reminder)
   const later = LATER_WORDS.some(w => toks.includes(w) || (w.includes(' ') && text.includes(w)))
   if (!later) {
@@ -293,8 +297,10 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
     if (counts.length) return { kind: 'herd_confirm', counts }
   }
   // Herd question only if it is about the herd: "کتنے" alone is also "how many trips / hours / km" (Test 7).
-  const herdWord = sq.length > 0 || has(text, 'گنتی', 'ریوڑ', 'جانور', 'ginti', 'rewar', 'janwar', 'herd', 'animals')
-  if (herdWord && (question || has(text, 'بتاؤ', 'batao', 'دکھاؤ', 'dikhao'))) return { kind: 'herd_status' }
+  const herdWord = sq.length > 0 || has(text, 'گنتی', 'ریوڑ', 'ریور', 'جانور', 'ginti', 'rewar', 'janwar', 'herd', 'animals')
+  // ...and only a how-many question: "where did the animals graze" mentions animals but is not asking for the count.
+  const countQ = has(text, 'کتنی', 'کتنے', 'کتنا', 'گنتی', 'تعداد', 'kitni', 'kitne', 'kitna', 'ginti', 'tadad', 'how many', 'count')
+  if (herdWord && countQ && (question || has(text, 'بتاؤ', 'batao', 'دکھاؤ', 'dikhao'))) return { kind: 'herd_status' }
   if (has(text, 'یاد دہانی', 'reminder', 'یاد')) return { kind: 'reminders_list' }
   return { kind: 'unknown' }
 }
