@@ -254,6 +254,9 @@ export async function answer(text: string, forced?: string): Promise<Answer> {
  * "Where should I go today?" answered ONLY from the herder's own records (saved water/shade/grazing places and their
  * trip ratings), each with its age. Not advice and not a forecast: today's water and grass are unknown to CHOTA.
  */
+/** Isolate an Urdu name inside an English sentence so it doesn't reorder the words around it. */
+const iso = (s: string) => `\u2068${s}\u2069`
+
 async function planToday(need: PlanNeeds, places: Place[]): Promise<Answer> {
   const A = (ur: string, en: string, map?: MapFocus, ok = true): Answer => ({ ur, en, map, ok, intent: 'plan_today' })
   const home = await getHome(), f = lastFix(), fs = currentFixState()
@@ -263,7 +266,7 @@ async function planToday(need: PlanNeeds, places: Place[]): Promise<Answer> {
   const maxM = need.near ? 3000 : 8000, OLD = 21 * DAY
   type Spot = { ur: string; en: string; lat: number; lon: number; t: number; placeId?: number; tripId?: number; score: number; note?: string; ratingUr?: string }
   const d = (s: { lat: number; lon: number }) => distanceM(from, s)
-  const asSpot = (p: Place, score = 0): Spot => ({ ur: p.name, en: p.name, lat: p.lat, lon: p.lon, t: p.createdAt, placeId: p.id, score, note: p.note })
+  const asSpot = (p: Place, score = 0): Spot => ({ ur: p.name, en: iso(p.name), lat: p.lat, lon: p.lon, t: p.createdAt, placeId: p.id, score, note: p.note })
   const water = places.filter(p => p.type === 'water').map(p => asSpot(p)).sort((a, b) => d(a) - d(b))
   const shade = places.filter(p => p.type === 'shade').map(p => asSpot(p))
   // grazing: saved grazing places + where rated trips went furthest from home
