@@ -73,7 +73,7 @@ function audit({ MIN_GAP, INSET }) {
 
 const b = await chromium.launch()
 const all = []
-for (const [w, h] of [[390, 844], [360, 740]]) for (const theme of ['dark', 'sun']) {   // dark = default, sun = ☀️ sun mode
+for (const [w, h] of [[390, 844], [390, 664], [360, 740]]) for (const theme of ['dark', 'sun']) {   // dark = default, sun = ☀️ sun mode
   const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, locale: 'ur-PK',
     permissions: ['geolocation'], geolocation: { latitude: 29.5600, longitude: 65.9400, accuracy: 12 } })
   const p = await ctx.newPage()
@@ -91,6 +91,9 @@ for (const [w, h] of [[390, 844], [360, 740]]) for (const theme of ['dark', 'sun
   await p.goto(URL); await p.evaluate(t => { localStorage.clear(); if (t === 'sun') localStorage.setItem('chota.theme', 'sun'); indexedDB.deleteDatabase('chota') }, theme); await p.reload(); await p.waitForTimeout(2000)
   if ((await p.evaluate(() => document.documentElement.dataset.theme ?? 'dark')) !== (theme === 'sun' ? 'light' : 'dark')) all.push({ at: tag, kind: 'theme not applied', sel: 'html', text: theme, detail: '' })
   await check('home empty')
+  // The home screen fits one phone screen without scrolling (the last row of buttons is visible).
+  { const over = await p.evaluate(() => Math.round(document.querySelector('.row3').getBoundingClientRect().bottom - innerHeight))
+    if (over > 0) all.push({ at: `${tag} home empty`, kind: 'home does not fit the screen', sel: '.row3', text: `last row ${over}px below the screen`, detail: '' }) }
   await p.locator('details.examples-box summary').click(); await check('home examples open'); await p.locator('details.examples-box summary').click()
   await click('سیٹنگز'); await click('یہ جگہ میرا گھر ہے'); await p.waitForTimeout(300); await check('settings'); await home()
   await click('ریوڑ کی گنتی'); await click('نئی قسم شامل کریں'); await check('count pad'); await p.fill('input.num', '47'); await click('کی تصدیق'); await p.waitForTimeout(300); await home()

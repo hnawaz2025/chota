@@ -402,3 +402,30 @@ details { color: var(--ink); }
 .count-row .tx { flex: 1; align-items: flex-start; }
 .count-row input.num { width: 7ch; flex: none; font-size: 1.8rem; text-align: center; }
 .came-home { font-size: .85rem; color: var(--muted); margin-inline-start: 6px; }
+
+/* ---------- Compact home for phone-height screens ----------
+   iPhone Safari leaves ~390×660 usable; installed ~390×760. The home screen must fit without scrolling:
+   the mic scales with screen height (still the biggest thing), tiles become rows, and the quiet strips lose
+   their English subtitle (the Urdu + icon carry them; every other English subtitle stays). */
+@media (max-height: 900px) {
+  .home { gap: 7px; padding-top: 6px; padding-bottom: 10px; }
+  .homechip, .sethome { min-height: 42px; padding-block: 2px; }
+  .homechip .tx .en, .sethome .tx .en, .examples-box summary .tx .en { display: none; }
+  .homechip .tx > .ur:not(:last-child), .sethome .tx > .ur:not(:last-child), .examples-box summary .tx > .ur:not(:last-child) { margin-bottom: 0; }
+  .voice { gap: 8px; }
+  .bigmic { width: clamp(118px, 20dvh, 180px); height: clamp(118px, 20dvh, 180px); margin: 2px 0; }
+  .bigmic > span { font-size: clamp(2rem, 4.4dvh, 3.4rem); }
+  .bigmic .tx .ur { font-size: clamp(1.05rem, 2.2dvh, 1.4rem); }
+  .bigmic .tx .en { margin-top: 6px; }
+  .examples-box summary { min-height: 44px; padding-block: 4px; }
+  .grid3 { gap: 8px; }
+  .grid3 .tile.trip { min-height: 64px; gap: 12px; padding-block: 6px; }
+  .grid3 .tile.trip .emoji { width: 44px; height: 44px; font-size: 1.5rem; }
+  .grid3 .tile:not(.trip) { flex-direction: row; gap: 10px; min-height: 64px; padding: 6px 10px 6px 40px; }   /* left room for the count badge */
+  .grid3 .tile:not(.trip) .emoji { margin: 0; font-size: 1.7rem; }
+  .row3 { gap: 8px; }
+  .row3 button { min-height: 0; padding: 4px 6px; }
+  .row3 .ic { font-size: 1.3rem; }
+  .row3 .tx .en { display: none; }
+  .row3 .tx > .ur:not(:last-child) { margin-bottom: 0; }
+}
