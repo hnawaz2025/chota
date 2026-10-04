@@ -191,6 +191,8 @@ export interface PlanNeeds { water: boolean; shade: boolean; near: boolean }
 /** "Where / which way should I go (with the herd)": a go-verb plus a where-word. Going home is way_back / home_distance instead. */
 const GO_VERBS = ['جاؤں', 'جاوں', 'جائیں', 'جاؤ', 'جانا', 'لے جاؤں', 'لے کر جاؤں', 'چراؤں', 'jana', 'jaun', 'jaon', 'jaoon', 'jayen', 'le jaun', 'charaun', 'go', 'take']
 const WHERE_WORDS = ['کہاں', 'کدھر', 'کس طرف', 'کس جگہ', 'کونسی طرف', 'کون سی طرف', 'kahan', 'kidhar', 'kis taraf', 'kis jagah', 'konsi taraf', 'where', 'which way']
+/** Asking for a place: with a stated need (water, heat) this is "where should I go today". */
+const PLACE_ASK = ['جگہ بتاؤ', 'جگہ بتائیں', 'کوئی جگہ', 'کونسی جگہ', 'کون سی جگہ', 'jagah batao', 'koi jagah', 'konsi jagah', 'somewhere', 'a place', 'any place', 'which place']
 const PLAN_WORDS = ['کس طرف جاؤں', 'کس طرف جاوں', 'kis taraf jaun', 'کہاں جاؤں', 'کدھر جاؤں', 'کہاں جاوں', 'کہاں لے جاؤں', 'کہاں چراؤں', 'کدھر چراؤں', 'کہاں چرانا', 'پانی کہاں ملے', 'کہاں جائیں',
   'kahan jaun', 'kahan jaon', 'kahan jaoon', 'kidhar jaun', 'kahan le jaun', 'kahan charaun', 'kahan charana', 'pani kahan milega', 'kahan jayen',
   'where should i go', 'where to go', 'where should i graze', 'where can i find water']
@@ -200,7 +202,7 @@ export function planNeeds(text: string): PlanNeeds {
   return {
     water: has(t, 'پانی', 'پیاس', 'pani', 'paani', 'pyas', 'water', 'thirst'),
     shade: has(t, 'گرمی', 'دھوپ', 'سایہ', 'garmi', 'dhoop', 'dhup', 'saya', 'heat', 'hot', 'shade'),
-    near: has(t, 'قریب', 'پاس ہی', 'نزدیک', 'qareeb', 'kareeb', 'nazdeek', 'paas hi', 'near', 'close') || (neg && has(t, 'دور', 'dur', 'door', 'far')),
+    near: has(t, 'قریب', 'پاس ہی', 'پاس میں', 'آس پاس', 'نزدیک', 'qareeb', 'kareeb', 'nazdeek', 'paas hi', 'paas mein', 'pass mein', 'aas paas', 'near', 'close') || (neg && has(t, 'دور', 'dur', 'door', 'far')),
   }
 }
 
@@ -259,8 +261,11 @@ export function parse(raw: string, nowMs: number, placeNames: string[] = []): In
     return { kind: 'save_place', name, placeType: placeTypeOf(name) ?? 'other' }
   }
   // 1b. where to go today: answered from the herder's own records
-  if (has(text, ...PLAN_WORDS) || (has(text, ...GO_VERBS) && has(text, ...WHERE_WORDS) && !has(text, 'واپس', 'wapas', 'گھر', 'ghar', 'home')))
-    return { kind: 'plan_today', ...planNeeds(raw) }
+  // ...or "tell me a place / somewhere" together with a need (water, heat): "بہت گرمی ہے کوئی قریب کی جگہ بتاؤ جہاں پانی ہو"
+  const needs = planNeeds(raw)
+  if (has(text, ...PLAN_WORDS) || (has(text, ...GO_VERBS) && has(text, ...WHERE_WORDS) && !has(text, 'واپس', 'wapas', 'گھر', 'ghar', 'home'))
+      || ((needs.water || needs.shade) && has(text, ...PLACE_ASK) && !has(text, 'یاد رکھ', 'yaad rakh', 'محفوظ', 'save', 'remember')))
+    return { kind: 'plan_today', ...needs }
   // 2. trip control, now (not "later": that is a reminder)
   const later = LATER_WORDS.some(w => toks.includes(w) || (w.includes(' ') && text.includes(w)))
   if (!later) {

@@ -50,6 +50,12 @@ const cases: [string, string, (i: any) => boolean][] = [
   ['آج گرمی ہے ریوڑ کو کس طرف لے جاؤں', 'plan_today', i => i.shade],
   ['aaj kis taraf jaun pani chahiye', 'plan_today', i => i.water],
   ['جانور پیاسے ہیں کدھر لے کر جاؤں', 'plan_today', i => i.water],
+  // reported by the user: hot, nearby, with water
+  ["where should i go it's very hot outside tell me somewhere near by and it should have water too", 'plan_today', i => i.water && i.shade && i.near],
+  ['بہت گرمی ہے کوئی قریب کی جگہ بتاؤ جہاں پانی ہو', 'plan_today', i => i.water && i.shade && i.near],
+  ['garmi bahut hai nazdeek koi jagah batao jahan pani ho', 'plan_today', i => i.water && i.shade && i.near],
+  ['mujhe batao kahan jaun bohot garmi hai paas mein koi jagah jahan pani bhi ho', 'plan_today', i => i.water && i.shade && i.near],
+  ['اس جگہ کو پانی یاد رکھو', 'save_place', i => i.placeType === 'water'],
   ['گھر کس طرف ہے', 'home_distance', () => true],
   ['واپس کیسے جاؤں راستہ دکھاؤ', 'way_back', () => true],
   ['کل صبح ٹیوب ویل جانا ہے', 'reminder', () => true],
