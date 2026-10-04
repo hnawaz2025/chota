@@ -1,14 +1,23 @@
-import { db, type HerdConfirmation, type HerdEvent, type Species } from './db'
+/**
+ * Herd memory: a physical count is the only confirmed number; the estimate is always derived (count + recorded changes).
+ */
+import { db, type HerdConfirmation, type HerdEvent, type Species } from '../data/db'
 import { now, DAY } from './clock'
 
+/** After this many days without a recount, the count is "stale". */
 export const STALE_DAYS = 14
+/** Urdu plural name of each species. */
 export const SPECIES_UR: Record<Species, string> = { goat: 'بکریاں', sheep: 'بھیڑیں', camel: 'اونٹ', cattle: 'گائیں' }
 /** Oblique plural ("بکریوں کی گنتی") and singular ("1 بکری") — Urdu needs both. */
 export const SPECIES_UR_OBL: Record<Species, string> = { goat: 'بکریوں', sheep: 'بھیڑوں', camel: 'اونٹوں', cattle: 'گایوں' }
+/** Urdu singular name of each species. */
 export const SPECIES_UR_ONE: Record<Species, string> = { goat: 'بکری', sheep: 'بھیڑ', camel: 'اونٹ', cattle: 'گائے' }
+/** A number with the right Urdu form ("1 بکری", "5 بکریاں"). */
 export const countUr = (n: number, s: Species) => `${n} ${n === 1 ? SPECIES_UR_ONE[s] : SPECIES_UR[s]}`
+/** English name of each species. */
 export const SPECIES_EN: Record<Species, string> = { goat: 'Goats', sheep: 'Sheep', camel: 'Camels', cattle: 'Cattle' }
 
+/** Confirmed count, changes since, estimate and status for one species. */
 export interface HerdStatus {
   species: Species
   confirmed?: HerdConfirmation
@@ -42,6 +51,7 @@ export async function trackedSpecies(): Promise<Species[]> {
   return (['goat', 'sheep', 'camel', 'cattle'] as Species[]).filter(x => s.has(x))
 }
 
+/** Record a physical count (the new confirmed number). */
 export async function confirmCount(species: Species, count: number, source: HerdConfirmation['source'], extra: { tripId?: number; expected?: number } = {}) {
   return db.confirmations.add({ species, count, confirmedAt: now(), source, ...extra })
 }

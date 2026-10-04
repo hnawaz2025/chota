@@ -5,8 +5,8 @@
  * has to catch; fewer is better. "Not understood" is safe but unhelpful.
  */
 import { readFileSync } from 'node:fs'
-import { parse } from '../app/src/nlu.ts'
-import { classify, type IntentModel } from '../app/src/intentModel.ts'
+import { parse } from '../app/src/core/nlu.ts'
+import { classify, type IntentModel } from '../app/src/core/intentModel.ts'
 
 const ROOT = new URL('..', import.meta.url).pathname
 const model: IntentModel = JSON.parse(readFileSync(ROOT + 'app/public/data/intent-model.json', 'utf8'))

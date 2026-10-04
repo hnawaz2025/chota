@@ -1,10 +1,11 @@
 /** Demo history for the hackathon walkthrough. Clearly labelled demo data; never mixed with real use. */
 import { db, setHome, type Place } from './db'
-import { now, DAY } from './clock'
-import { compass, bearingDeg, distanceM } from './geo'
-import { splitTrail } from './trail'
-import { forgetActiveTrip } from './gps'
+import { now, DAY } from '../services/clock'
+import { compass, bearingDeg, distanceM } from '../core/geo'
+import { splitTrail } from '../core/trail'
+import { forgetActiveTrip } from '../services/gps'
 
+/** Demo home: Kili Jamaldini, Nushki (GeoNames). */
 export const DEMO_HOME = { lat: 29.53766, lon: 65.97213 }   // Kili Jamaldini, Nushki (GeoNames)
 
 const km = (e: number, n: number) => ({
@@ -115,6 +116,7 @@ export async function loadDemo() {
   await db.reminders.add({ text: 'کاریز پر پانی دیکھنا', dueAt: due.getTime(), status: 'pending', source: 'user', createdAt: now() })
 }
 
+/** Delete every CHOTA record on this device and forget any running trip. */
 export async function clearAll() {
   await Promise.all([db.confirmations.clear(), db.herdEvents.clear(), db.trips.clear(), db.points.clear(),
     db.places.clear(), db.reminders.clear(), db.settings.clear()])

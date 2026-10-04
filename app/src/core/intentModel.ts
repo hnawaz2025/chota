@@ -5,7 +5,9 @@
  */
 import { normalize } from './nlu.ts'
 
+/** The exported model: labels, intercepts, and per-feature [idf, weights by label]. */
 export interface IntentModel { labels: string[]; intercept: number[]; features: Record<string, [number, Record<string, number>]> }
+/** A label with its probability. */
 export interface Guess { label: string; p: number }
 
 /** Must match ml/train.py features(). */

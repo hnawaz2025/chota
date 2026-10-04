@@ -1,12 +1,15 @@
+/**
+ * Offline map (Leaflet over a saved Sentinel-2 image): trails coloured by rating, gaps dotted, places, home and position.
+ */
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, getHome, placeIcon, type TripPoint } from './db'
-import { onFix, activeTrip, type Fix } from './gps'
-import type { MapFocus } from './answer'
-import { now } from './clock'
-import { splitTrail, fixState, GAP_MS, type Pt } from './trail'
+import { db, getHome, placeIcon, type TripPoint } from '../data/db'
+import { onFix, activeTrip, type Fix } from '../services/gps'
+import type { MapFocus } from '../services/answer'
+import { now } from '../services/clock'
+import { splitTrail, fixState, GAP_MS, type Pt } from '../core/trail'
 
 const BASE = import.meta.env.BASE_URL
 const RATING_COLOR: Record<string, string> = { good: '#2e9e4f', okay: '#d9a21b', poor: '#c4442f' }
@@ -30,6 +33,7 @@ const metaP = fetch(`${BASE}data/basemap.json`).then(r => r.json()) as Promise<{
 const villagesP = fetch(`${BASE}data/villages.json`).then(r => r.json()) as Promise<{ n: string; a: number; o: number }[]>
 const borderP = fetch(`${BASE}data/pakistan.geojson`).then(r => r.json())
 
+/** The map component. `focus` highlights trips / places / the way home; `allTrips` shows every trip. */
 export function MapView({ focus, allTrips = false, className = 'map' }: { focus?: MapFocus; allTrips?: boolean; className?: string }) {
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | undefined>(undefined)

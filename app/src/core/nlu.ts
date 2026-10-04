@@ -2,7 +2,7 @@
  * Deterministic Urdu / Roman-Urdu intent parser. No model, no generation.
  * Benchmarked approach from feasibility Test 5 (rules beat 1-2B on-device LLMs, which also invented records).
  */
-import type { Species, HerdEventType, PlaceType } from './db'
+import type { Species, HerdEventType, PlaceType } from '../data/db'
 import { DIRS, DIR_UR, type Dir } from './geo.ts'
 
 // ---------- normalization ----------
@@ -10,6 +10,7 @@ const CHARMAP: Record<string, string> = {
   'ي': 'ی', 'ى': 'ی', 'ك': 'ک', 'ه': 'ہ', 'ۀ': 'ہ', 'ة': 'ہ', 'ۓ': 'ے',
   '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9',
 }
+/** Normalise Urdu / Roman-Urdu text for matching: unify letter variants, digits, drop diacritics and punctuation; returns tokens. */
 export function normalize(text: string): string[] {
   const t = [...text].map(c => CHARMAP[c] ?? c).join('')
     .replace(/[ً-ٰٟ]/g, '').toLowerCase().replace(/[،۔,.!?؟"']/g, ' ')
@@ -28,7 +29,9 @@ const MULT: Record<string, number> = { 'ہزار': 1e3, hazar: 1e3, hazaar: 1e3,
 
 const numval = (t: string) => /^\d+(\.\d+)?$/.test(t) ? parseFloat(t) : NUM[t]
 
+/** A number found in a token list (token range, value, and whether it was a money amount). */
 export interface NumSpan { start: number; end: number; value: number; money: boolean }
+/** Find numbers written as digits or words ("سینتالیس", "do lakh das hazar", "ساڑھے چھ"). */
 export function parseNumbers(toks: string[]): NumSpan[] {
   const out: NumSpan[] = []
   let i = 0
@@ -70,6 +73,7 @@ const DIR_WORDS: [string[], Dir][] = [
   [['شمال', 'north', 'shumal'], 'north'], [['جنوب', 'south', 'junoob'], 'south'],
   [['مشرق', 'east', 'mashriq'], 'east'], [['مغرب', 'west', 'maghrib'], 'west'],
 ]
+/** Compass direction mentioned in the text, if any. */
 export function findDir(text: string): Dir | undefined {
   for (const [ws, d] of DIR_WORDS) if (ws.some(w => text.includes(w))) return d
 }
@@ -80,6 +84,7 @@ const WEEKDAYS: Record<string, number> = { 'پیر': 1, 'منگل': 2, 'بدھ':
   peer: 1, mangal: 2, budh: 3, jumerat: 4, juma: 5, jumma: 5, itwar: 0 }
 /** What was assumed when the herder didn't say it. The answer must state it, like an assumed herd quantity. */
 export type WhenAssumed = 'no_time' | 'no_date_or_time' | 'am' | 'pm'
+/** A due time plus what was assumed to get it. */
 export interface When { at: number; assumed?: WhenAssumed }
 
 const PART: [string[], 'morning' | 'noon' | 'evening' | 'night'][] = [
@@ -149,6 +154,7 @@ export function parseWhen(text: string, toks: string[], nowMs: number): When {
   if (days === 0 && due.getTime() < nowMs) return { at: nowMs + 3600000, assumed: 'no_time' }
   return { at: due.getTime(), assumed }
 }
+/** Due time only (see parseWhen). */
 export const parseDue = (text: string, toks: string[], nowMs: number) => parseWhen(text, toks, nowMs).at
 
 // ---------- place tags ----------
@@ -196,6 +202,7 @@ const PLACE_ASK = ['جگہ بتاؤ', 'جگہ بتائیں', 'کوئی جگہ', 
 const PLAN_WORDS = ['کس طرف جاؤں', 'کس طرف جاوں', 'kis taraf jaun', 'کہاں جاؤں', 'کدھر جاؤں', 'کہاں جاوں', 'کہاں لے جاؤں', 'کہاں چراؤں', 'کدھر چراؤں', 'کہاں چرانا', 'پانی کہاں ملے', 'کہاں جائیں',
   'kahan jaun', 'kahan jaon', 'kahan jaoon', 'kidhar jaun', 'kahan le jaun', 'kahan charaun', 'kahan charana', 'pani kahan milega', 'kahan jayen',
   'where should i go', 'where to go', 'where should i graze', 'where can i find water']
+/** What the herder needs today, from the wording: water, shade (heat) and/or a nearby place. */
 export function planNeeds(text: string): PlanNeeds {
   const t = ' ' + normalize(text).join(' ') + ' '
   const neg = has(t, 'نہیں', 'nahi', 'nhi', 'nahin', 'not')
@@ -271,6 +278,7 @@ function eventType(text: string): HerdEventType | undefined {
   if (has(text, 'خرید', 'مول لی', 'مول لیا', 'khareed', 'kharid', 'mol li', 'mol liya', 'bought')) return 'purchase'
 }
 const DELTA_SIGN: Record<HerdEventType, number> = { birth: 1, purchase: 1, sale: -1, death: -1, loss: -1, slaughter: -1, other: 0 }
+/** +1 for herd events that add animals, −1 for those that remove them. */
 export const signOf = (t: HerdEventType) => DELTA_SIGN[t]
 
 /** Species mentions with their quantity (number just before the noun, else 1, flagged as assumed). */
@@ -285,6 +293,7 @@ export function speciesQty(toks: string[]) {
   return res
 }
 
+/** Rules parser: one sentence → one command with its details, or unknown. Deterministic; never invents values. */
 export function parse(raw: string, nowMs: number, placeNames: string[] = []): Intent {
   let toks = normalize(raw)
   // self-correction "تین نہیں چار"

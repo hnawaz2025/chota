@@ -8,7 +8,9 @@ try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice } catch { /* no T
 /** Android Chrome often lists no voices even when Google TTS has Urdu: asking for lang ur-PK still reaches it.
  * Elsewhere (e.g. a Mac) that would read Urdu with an English voice, so only real Urdu voices are used. */
 const androidUnlisted = () => { try { return /Android/i.test(navigator.userAgent) && speechSynthesis.getVoices().length === 0 } catch { return false } }
+/** Whether Urdu text-to-speech is available on this device. */
 export const hasUrduVoice = () => !!urVoice || androidUnlisted()
+/** Speak Urdu text, if an Urdu voice exists. */
 export function speak(ur: string) {
   try {
     if (!hasUrduVoice()) return false
@@ -19,10 +21,12 @@ export function speak(ur: string) {
 }
 
 type Rec = { lang: string; interimResults: boolean; onresult: (e: any) => void; onerror: (e: any) => void; onend: () => void; start: () => void; stop: () => void; abort: () => void }
+/** Whether the browser offers speech recognition. */
 export const canListen = () => !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
 
 /** Why listening failed, in words the herder (and we) can act on. Undefined = ended normally or cancelled. */
 export type ListenError = 'insecure' | 'not-allowed' | 'network' | 'no-speech' | 'audio-capture' | 'language-not-supported' | 'start-failed' | 'other'
+/** Urdu + English explanation for each speech-recognition failure. */
 export const LISTEN_ERROR: Record<ListenError, [string, string]> = {
   insecure: ['مائیک صرف https یا localhost پر چلتا ہے۔ کی بورڈ کا 🎤 استعمال کریں۔', 'The mic needs https or localhost. Use the keyboard mic instead.'],
   'not-allowed': ['مائیک کی اجازت نہیں ملی۔ براؤزر کی سیٹنگ میں اس سائٹ کو مائیک کی اجازت دیں۔', 'Microphone permission was denied. Allow the mic for this site in browser settings.'],

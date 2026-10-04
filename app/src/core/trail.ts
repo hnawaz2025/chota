@@ -5,6 +5,7 @@
  */
 import { distanceM, pathLengthM, type LatLon } from './geo.ts'
 
+/** A breadcrumb: position plus the time it was measured. */
 export interface Pt extends LatLon { t: number }
 
 /** The recorder saves a point at least every 2 min while fixes arrive (gps.ts), so a longer silence means no GPS. */
@@ -12,9 +13,11 @@ export const GAP_MS = 5 * 60000
 /** Faster than this between consecutive points is a GPS glitch or a vehicle, not walking with animals. */
 export const JUMP_MPS = 10, JUMP_MIN_M = 300
 
+/** Why a part of the trail is missing. */
 export type GapKind = 'head' | 'silence' | 'jump' | 'tail'
 /** `from`/`to` are the recorded points either side; a head gap has no `from`, a tail gap no `to`. */
 export interface Gap { kind: GapKind; from?: Pt; to?: Pt; ms: number; straightM?: number }
+/** A trip's breadcrumbs as recorded segments + gaps, with recorded distance and total gap time. */
 export interface Trail<P extends Pt = Pt> { segments: P[][]; gaps: Gap[]; recordedM: number; gapMs: number }
 
 /**
@@ -51,7 +54,9 @@ export const FIX_STALE_MS = 2 * 60000
 /** Worse than this the fix is not used for breadcrumbs, and answers state the uncertainty. */
 export const FIX_POOR_M = 100
 
+/** How usable the current GPS fix is. */
 export type FixState = 'none' | 'ok' | 'stale' | 'poor'
+/** Classify a fix as ok / poor (inaccurate) / stale (too old) / none, as of nowMs. */
 export function fixState(f: { t: number; acc: number } | undefined, nowMs: number): { state: FixState; ageMs: number } {
   if (!f) return { state: 'none', ageMs: Infinity }
   const ageMs = Math.max(0, nowMs - f.t)
@@ -62,11 +67,13 @@ export function fixState(f: { t: number; acc: number } | undefined, nowMs: numbe
 /** GPS wobbles 5-15 m even standing still, so near home a distance and direction would flicker ("10 m N", "0 m", "8 m SW").
  *  Within this (or within the fix's own accuracy, if worse) the honest answer is simply "at home". */
 export const AT_HOME_M = 100
+/** True when the distance to home is within GPS noise (or within the fix accuracy). */
 export const isAtHome = (distanceM: number, accM: number) => distanceM <= Math.max(AT_HOME_M, accM)
 
 // ---------- forgotten trips ----------
 /** No recorded point for this long, or open this long overall, and the trip is probably forgotten. */
 export const FORGOTTEN_IDLE_MS = 2 * 3600000, FORGOTTEN_TOTAL_MS = 14 * 3600000
+/** True when an open trip looks forgotten (long idle, or open for very long). */
 export function isForgotten(startedAt: number, lastPointT: number | undefined, nowMs: number) {
   return nowMs - (lastPointT ?? startedAt) > FORGOTTEN_IDLE_MS || nowMs - startedAt > FORGOTTEN_TOTAL_MS
 }
@@ -77,11 +84,13 @@ export function calendarDaysAgo(t: number, nowMs: number) {
   const a = new Date(nowMs), b = new Date(t); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0)
   return Math.round((a.getTime() - b.getTime()) / 86400000)
 }
+/** A duration in Urdu: minutes, hours or days. */
 export function spanUr(ms: number) {
   const m = Math.round(ms / 60000)
   const h = Math.round(m / 60)
   return m < 60 ? `${m} منٹ` : m < 48 * 60 ? `${h} ${h === 1 ? 'گھنٹہ' : 'گھنٹے'}` : `${Math.round(m / 1440)} دن`
 }
+/** A duration in English: min, h or days. */
 export function spanEn(ms: number) {
   const m = Math.round(ms / 60000)
   return m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`

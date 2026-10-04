@@ -1,8 +1,16 @@
+/**
+ * CHOTA's on-phone database (IndexedDB via Dexie): trips, GPS points, places, herd counts and changes, reminders, settings.
+ * Nothing is sent anywhere. Every record carries its own time, so answers can say how old a memory is.
+ */
 import Dexie, { type EntityTable } from 'dexie'
 
+/** Animals tracked in the herd. */
 export type Species = 'goat' | 'sheep' | 'camel' | 'cattle'
+/** Kinds of herd change. */
 export type HerdEventType = 'birth' | 'purchase' | 'sale' | 'death' | 'loss' | 'slaughter' | 'other'
+/** The herder's own grazing rating for a trip. */
 export type Rating = 'good' | 'okay' | 'poor'
+/** Tag of a saved place. */
 export type PlaceType = 'grazing' | 'water' | 'shade' | 'landmark' | 'home' | 'other'
 /** Herder-chosen tag for a saved place (their own label, not an assessment by CHOTA). */
 export const PLACE_TAGS: { type: PlaceType; icon: string; ur: string; en: string }[] = [
@@ -12,6 +20,7 @@ export const PLACE_TAGS: { type: PlaceType; icon: string; ur: string; en: string
   { type: 'landmark', icon: '🪨', ur: 'نشانی', en: 'Landmark' },
   { type: 'other', icon: '📍', ur: 'دیگر', en: 'Other' },
 ]
+/** Icon for a place tag. */
 export const placeIcon = (t: PlaceType) => t === 'home' ? '🏠' : PLACE_TAGS.find(x => x.type === t)?.icon ?? '📍'
 
 /** A physical count the herder confirmed. The only authoritative number. */
@@ -26,6 +35,7 @@ export interface HerdEvent {
   id?: number; species: Species; delta: number; type: HerdEventType; at: number
   sourceText?: string; tripId?: number
 }
+/** A grazing trip. Distances are recorded distance only (gaps excluded). */
 export interface Trip {
   id?: number; startedAt: number; endedAt?: number
   distanceM?: number; furthestFromHomeM?: number; direction?: string  // 8-way compass key from home
@@ -33,11 +43,14 @@ export interface Trip {
   gapCount?: number; gapMs?: number
   rating?: Rating | null
 }
+/** One GPS breadcrumb of a trip. */
 export interface TripPoint { id?: number; tripId: number; t: number; lat: number; lon: number; acc?: number }
+/** A place the herder named, saved where they were when they asked. */
 export interface Place {
   id?: number; name: string; type: PlaceType; lat: number; lon: number; createdAt: number
   note?: string; tripId?: number; acc?: number
 }
+/** A reminder: by clock time, or tied to the end of a trip. */
 export interface Reminder {
   id?: number; text: string; dueAt: number; status: 'pending' | 'fired' | 'done' | 'dismissed'
   source: 'user' | 'system'; kind?: string; placeId?: number; createdAt: number; firedAt?: number
@@ -46,8 +59,10 @@ export interface Reminder {
 }
 /** dueAt for trip-end reminders: never reached by the clock, sorts after timed reminders. */
 export const TRIP_END_DUE = Number.MAX_SAFE_INTEGER
+/** A key/value setting (e.g. home). */
 export interface Setting { key: string; value: unknown }
 
+/** The Dexie database instance. */
 export const db = new Dexie('chota') as Dexie & {
   confirmations: EntityTable<HerdConfirmation, 'id'>
   herdEvents: EntityTable<HerdEvent, 'id'>
@@ -67,10 +82,13 @@ db.version(1).stores({
   settings: 'key',
 })
 
+/** The herder's home position and when it was set. */
 export interface Home { lat: number; lon: number; setAt: number }
+/** Read the saved home, if any. */
 export async function getHome(): Promise<Home | undefined> {
   return (await db.settings.get('home'))?.value as Home | undefined
 }
+/** Save the current position as home. */
 export async function setHome(lat: number, lon: number, at: number) {
   await db.settings.put({ key: 'home', value: { lat, lon, setAt: at } })
 }

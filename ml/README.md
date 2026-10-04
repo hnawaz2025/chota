@@ -5,8 +5,8 @@ It runs in the browser, offline, in milliseconds, and never generates text.
 
 - `data.py` → `train.jsonl`: synthetic training sentences (Urdu script, Roman Urdu, some English) + ASR-style noise.
 - `train.py`: char 2–4-gram + word TF-IDF, multinomial logistic regression → `app/public/data/intent-model.json`
-  (~1 MB, ~160 KB gzipped) + `parity.json`.
-- `app/src/intentModel.ts`: the same featurisation in TypeScript (parity-checked against Python: 60/60).
+  (~1.3 MB, ~200 KB gzipped) + `parity.json`.
+- `app/src/core/intentModel.ts`: the same featurisation in TypeScript (parity-checked against Python: 60/60).
 - `evaluate.ts`: rules alone vs what the app does (rules → out-of-scope veto → classifier fallback).
 
 ```

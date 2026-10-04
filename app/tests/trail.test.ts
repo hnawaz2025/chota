@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { splitTrail, fixState, isForgotten, calendarDaysAgo, spanUr, isAtHome, GAP_MS, FIX_STALE_MS } from '../src/trail.ts'
+import { splitTrail, fixState, isForgotten, calendarDaysAgo, spanUr, isAtHome, GAP_MS, FIX_STALE_MS } from '../src/core/trail.ts'
 
 const MIN = 60000, T0 = new Date('2026-10-03T08:00:00').getTime()
 const HOME = { lat: 29.53766, lon: 65.97213 }

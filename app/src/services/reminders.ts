@@ -1,4 +1,7 @@
-import { db, type Reminder } from './db'
+/**
+ * Reminders: fires due clock reminders and trip-end reminders, adds proactive recount prompts, shows notifications.
+ */
+import { db, type Reminder } from '../data/db'
 import { now, DAY } from './clock'
 import { herdStatus, trackedSpecies, SPECIES_UR_OBL, STALE_DAYS } from './herd'
 
@@ -22,6 +25,7 @@ async function proactive() {
 
 /** Fire due reminders: returns those newly fired so the UI can show / speak / notify. */
 let checking = false
+/** Fire due clock reminders (and add proactive ones); returns those newly fired. */
 export async function checkReminders(): Promise<Reminder[]> {
   if (checking) return []   // a slow check must not overlap the next tick and fire the same reminder twice
   checking = true
@@ -52,6 +56,7 @@ function notify(r: Reminder) {
   } catch { /* notifications unavailable */ }
 }
 
+/** Ask for permission to show notifications. */
 export async function requestNotifications() {
   try { return typeof Notification !== 'undefined' ? await Notification.requestPermission() : 'denied' } catch { return 'denied' }
 }

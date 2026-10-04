@@ -3,11 +3,12 @@
  * Trip points: saved when moved >= MIN_STEP_M or MAX_GAP_MS elapsed; fixes worse than MAX_ACC_M are skipped.
  * A fix's `t` is when it was measured, not when it arrived, so a cached or old fix is never stamped as current.
  */
-import { db, getHome } from './db'
+import { db, getHome } from '../data/db'
 import { now, advanceMs } from './clock'
-import { distanceM, bearingDeg, compass, type LatLon } from './geo'
-import { splitTrail, fixState, isForgotten, FIX_POOR_M } from './trail'
+import { distanceM, bearingDeg, compass, type LatLon } from '../core/geo'
+import { splitTrail, fixState, isForgotten, FIX_POOR_M } from '../core/trail'
 
+/** A GPS fix: position, accuracy (m) and the time it was measured. */
 export interface Fix extends LatLon { acc: number; t: number }
 type Listener = (f: Fix) => void
 
@@ -23,11 +24,16 @@ let refreshTimer: number | undefined
 const lsGet = (k: string) => { try { return localStorage.getItem(k) } catch { return null } }
 const lsSet = (k: string, v: string | null) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v) } catch { /* ignore */ } }
 
+/** Whether the labelled demo walk is used instead of real GPS. */
 export const isSimulated = () => lsGet('chota.sim') !== '0'   // demo default: simulated
+/** Switch between the demo walk and real GPS. */
 export function setSimulated(on: boolean) { lsSet('chota.sim', on ? '1' : '0'); startPositioning() }
 
+/** The latest fix, however old. */
 export const lastFix = () => last
+/** How usable the latest fix is right now. */
 export const currentFixState = () => fixState(last, now())
+/** Subscribe to new fixes; returns an unsubscribe function. */
 export function onFix(fn: Listener) { listeners.add(fn); if (last) fn(last); return () => { listeners.delete(fn) } }
 function emit(f: Fix) { last = f; listeners.forEach(fn => fn(f)) }
 
@@ -39,7 +45,9 @@ const SIM_ROUTE_KM: [number, number][] = [
 ]
 const WALK_MPS = 1.3   // ~4.7 km/h with animals
 let simIdx = 0, simFrac = 0, simSpeedMps = 40, simPaused = true
+/** Demo walk state (paused, speed, progress). */
 export const simState = () => ({ paused: simPaused, speed: simSpeedMps, progress: (simIdx + simFrac) / (SIM_ROUTE_KM.length - 1) })
+/** Control the demo walk. */
 export function simSet(o: { paused?: boolean; speed?: number; reset?: boolean }) {
   if (o.paused !== undefined) simPaused = o.paused
   if (o.speed) simSpeedMps = o.speed
@@ -74,6 +82,7 @@ function refresh() {
 // The browser also drops the screen wake lock whenever the page is hidden, so take it again.
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { refresh(); holdScreen() } })
 
+/** Start real GPS (watch + periodic refresh) or the demo walk. */
 export function startPositioning() {
   if (watchId !== undefined) navigator.geolocation?.clearWatch(watchId)
   if (simTimer !== undefined) clearInterval(simTimer)
@@ -91,7 +100,9 @@ export function startPositioning() {
 let activeTripId: number | undefined = Number(lsGet('chota.activeTrip')) || undefined
 let lastSaved: Fix | undefined
 let wakeLock: { release: () => Promise<void>; released?: boolean } | undefined
+/** Whether this browser can keep the screen on. */
 export const canHoldScreen = () => 'wakeLock' in navigator
+/** Whether the screen is currently held on. */
 export const screenHeld = () => !!wakeLock && !wakeLock.released
 /** Keep the screen on during a trip: in a web app, GPS stops when the screen goes off. */
 async function holdScreen() {
@@ -100,6 +111,7 @@ async function holdScreen() {
 }
 /** While an open trip from an earlier session is being reviewed, new fixes must not be appended to it. */
 let holdRecording = false
+/** Id of the trip being recorded, if any. */
 export const activeTrip = () => activeTripId
 
 /** A fix is written as a breadcrumb only if it is accurate, fresh, and newer than the last breadcrumb. */
@@ -112,6 +124,7 @@ onFix(async f => {
   await db.points.add({ tripId: activeTripId, t: f.t, lat: f.lat, lon: f.lon, acc: f.acc })
 })
 
+/** Start recording a trip (no-op if one is running). */
 export async function startTrip() {
   if (activeTripId) return activeTripId
   activeTripId = await db.trips.add({ startedAt: now() }) as number
@@ -151,6 +164,7 @@ export async function endTrip(at?: number) {
   return id
 }
 
+/** A trip left open from an earlier session. */
 export interface OpenTrip { tripId: number; startedAt: number; lastPointT?: number }
 /**
  * Call before startPositioning() on launch. If the open trip looks forgotten, recording is held until the

@@ -1,4 +1,4 @@
-import { parse } from '../src/nlu.ts'
+import { parse } from '../src/core/nlu.ts'
 const NOW = new Date('2026-10-03T10:00:00').getTime()
 const places = ['Purana Chara', 'پرانا چارہ', 'ٹیوب ویل']
 const cases: [string, string, (i: any) => boolean][] = [
@@ -112,7 +112,7 @@ for (const [t, kind, check] of cases) {
 }
 console.log(`${pass}/${cases.length} intent cases pass`)
 // place tags suggested from the spoken / typed name
-import { placeTypeOf } from '../src/nlu.ts'
+import { placeTypeOf } from '../src/core/nlu.ts'
 const tags: [string, string | undefined][] = [['پانی کا تالاب', 'water'], ['Chashma', 'water'], ['اچھی گھاس', 'grazing'], ['purana chara', 'grazing'],
   ['بڑا درخت', 'shade'], ['سفید پتھر', 'landmark'], ['قادر بخش', undefined]]
 for (const [n, t] of tags) { const ok = placeTypeOf(n) === t; pass += +ok; if (!ok) console.log('✗ tag', n, '->', placeTypeOf(n)) }

@@ -1,15 +1,16 @@
 /** Executes a parsed intent against the local DB and returns a templated Urdu + English answer. */
-import { db, getHome, PLACE_TAGS, TRIP_END_DUE, type Place, type PlaceType, type Trip } from './db'
+import { db, getHome, PLACE_TAGS, TRIP_END_DUE, type Place, type PlaceType, type Trip } from '../data/db'
 import { now, DAY } from './clock'
-import { parse, signOf, normalize, speciesQty, parseWhen, findDir, planNeeds, extractPlace, type Intent, type HerdEventParse, type PlanNeeds } from './nlu'
-import { classify, type IntentModel } from './intentModel'
-import type { HerdEventType } from './db'
-import type { Species } from './db'
-import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from './geo'
+import { parse, signOf, normalize, speciesQty, parseWhen, findDir, planNeeds, extractPlace, type Intent, type HerdEventParse, type PlanNeeds } from '../core/nlu'
+import { classify, type IntentModel } from '../core/intentModel'
+import type { HerdEventType } from '../data/db'
+import type { Species } from '../data/db'
+import { distanceM, bearingDeg, compass, DIR_UR, fmtKm, fmtKmUr } from '../core/geo'
 import { lastFix, activeTrip, currentFixState, startTrip, endTrip, type Fix } from './gps'
-import { splitTrail, spanUr, spanEn, fixState, calendarDaysAgo, isAtHome } from './trail'
+import { splitTrail, spanUr, spanEn, fixState, calendarDaysAgo, isAtHome } from '../core/trail'
 import { herdStatus, trackedSpecies, confirmCount, countUr, SPECIES_UR, SPECIES_UR_OBL, SPECIES_EN } from './herd'
 
+/** What the map should highlight for an answer. */
 export interface MapFocus { tripIds?: number[]; placeIds?: number[]; homeLine?: boolean; wayBack?: boolean }
 /** A herd change understood from free text / voice. Nothing is written until the herder confirms the read-back. */
 export type PendingWrite =
@@ -51,6 +52,7 @@ export function rejectPending(p: PendingWrite): Answer {
   return { ur, en, ok: false, intent: p.kind }
 }
 
+/** The herder confirmed the read-back: write it. */
 export async function commitPending(p: PendingWrite): Promise<Answer> {
   if (p.kind === 'save_place') return savePlace(p.name, p.placeType, p.fix, p.at)
   if (p.kind === 'reminder') {
@@ -93,10 +95,13 @@ const ASSUMED_WHEN = {
 const REC_UR = 'میرے ریکارڈ میں', REC_EN = 'In my records'
 /** Calendar days, not 24-hour blocks: last evening's trip is "کل" this morning, not "آج". */
 const daysAgo = (t: number) => calendarDaysAgo(t, now())
+/** How long ago, in Urdu calendar days ("آج", "کل", "3 دن پہلے"). */
 export const agoUr = (t: number) => { const d = daysAgo(t); return d <= 0 ? 'آج' : d === 1 ? 'کل' : `${d} دن پہلے` }
+/** How long ago, in English calendar days. */
 export const agoEn = (t: number) => { const d = daysAgo(t); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago` }
 const durUr = (ms: number) => { const h = Math.floor(ms / 3600000), m = Math.round(ms % 3600000 / 60000); return h ? `${h} ${h === 1 ? 'گھنٹہ' : 'گھنٹے'} ${m} منٹ` : `${m} منٹ` }
 const durEn = (ms: number) => { const h = Math.floor(ms / 3600000), m = Math.round(ms % 3600000 / 60000); return h ? `${h} h ${m} min` : `${m} min` }
+/** When a reminder is due, in Urdu ("کل صبح 6 بجے"). */
 export function dueUr(t: number) {
   const d = new Date(t), today = new Date(now()); today.setHours(0, 0, 0, 0)
   const days = Math.round((new Date(t).setHours(0, 0, 0, 0) - today.getTime()) / DAY)
@@ -107,7 +112,9 @@ export function dueUr(t: number) {
 }
 /** When a trip-end reminder fires: at the end of the running trip, or of the next one if none is running. */
 export const tripEndUr = () => activeTrip() ? 'یہ سفر ختم ہونے پر (واپسی پر)' : 'اگلا سفر ختم ہونے پر (واپسی پر)'
+/** English for when a trip-end reminder fires. */
 export const tripEndEn = () => activeTrip() ? 'when this trip ends (on the way back)' : 'when the next trip ends (on the way back)'
+/** When a reminder is due, in English. */
 export function dueEn(t: number) {
   const d = new Date(t), today = new Date(now()); today.setHours(0, 0, 0, 0)
   const days = Math.round((new Date(t).setHours(0, 0, 0, 0) - today.getTime()) / DAY)
@@ -190,6 +197,7 @@ export const OOS_VETO_P = 0.7
 export const AI_OVERRIDE_P = 0.7
 /** Above this the AI is trusted over any rule match it disagrees with (its details still come from the rules' extractors). */
 export const AI_FIRST_P = 0.9
+/** Icon, Urdu and English name of each command (for AI guesses and "did you mean" buttons). */
 export const LABEL_UR: Record<string, [string, string, string]> = {
   home_distance: ['🏠', 'گھر کی دوری', 'distance home'], way_back: ['🏠', 'واپسی کا راستہ', 'way back'],
   start_trip: ['👣', 'سفر شروع', 'start trip'], end_trip: ['👣', 'سفر ختم', 'end trip'],
@@ -249,6 +257,7 @@ async function fromLabel(label: string, text: string, places: Place[]): Promise<
   }
 }
 
+/** Understand a sentence and act on it: rules, the AI's second opinion, then the command. `forced` runs a command the herder picked. */
 export async function answer(text: string, forced?: string): Promise<Answer> {
   const places = await db.places.toArray()
   if (forced) return fromLabel(forced, text, places)          // herder picked one of the offered choices

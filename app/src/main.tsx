@@ -1,3 +1,4 @@
+/** Entry point: loads the Urdu font and styles, then mounts the app. */
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource/noto-nastaliq-urdu/400.css'
