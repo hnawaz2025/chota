@@ -243,13 +243,13 @@ function NamePlace({ onClose }: { onClose: (a?: Answer) => void }) {
   useEffect(() => {
     const wasWalking = isSimulated() && !simState().paused
     if (wasWalking) simSet({ paused: true })
-    return () => { stopListening(); if (wasWalking) simSet({ paused: false }) }
+    return () => { stopListening(true); if (wasWalking) simSet({ paused: false }) }
   }, [])
   const tag = type ?? placeTypeOf(name) ?? 'other'
   const tagInfo = PLACE_TAGS.find(t => t.type === tag)!
   const fs = fixState(spot.fix, spot.at)
   const mic = () => {
-    if (listening) { stopListening(); return }
+    if (listening) { stopListening(); setListening(false); return }   // button off now; words heard so far are used
     setMicErr(undefined)
     if (listen(t => setName(t), e => { setListening(false); if (e) setMicErr(LISTEN_ERROR[e]) }, t => setName(t))) setListening(true)
   }
@@ -343,12 +343,12 @@ function VoiceAsk({ big, onAction, onMap }: { big?: boolean; onAction: (a: UiAct
   // A new answer (and its ✓/✗ when it needs confirming) is scrolled into view, so the herder never has to hunt for it.
   useEffect(() => { if (cur) ansRef.current?.scrollIntoView({ block: cur.a.pending ? 'end' : 'nearest' }) }, [cur])
   /** Offline / unsupported: the phone keyboard's own mic (Gboard Urdu voice typing) fills the same box. */
-  const toKeyboardMic = () => { stopListening(); setKbHint(true); input.current?.focus() }
+  const toKeyboardMic = () => { stopListening(true); setKbHint(true); input.current?.focus() }
   useEffect(() => { if (!heard) return; const t = setTimeout(() => { ask(heard); setHeard(undefined) }, 900); return () => clearTimeout(t) }, [heard])
-  useEffect(() => () => stopListening(), [])
+  useEffect(() => () => stopListening(true), [])
   const show = (q: string, a: Answer) => { setCur({ q, a }); speak(a.ur); onMap?.(a.map); if (a.action) onAction(a.action) }
   const mic = () => {
-    if (listening) { stopListening(); return }
+    if (listening) { stopListening(); setListening(false); return }   // button off now; words heard so far are used
     setMicErr(undefined); setKbHint(false); setQ('')
     // Browser recognition is online-only: without it, go straight to the keyboard mic (focus must happen in the tap).
     if (!canListen() || !navigator.onLine) { toKeyboardMic(); return }
@@ -402,11 +402,11 @@ function Reminders() {
   const [msg, setMsg] = useState<Answer>()
   const [listening, setListening] = useState(false)
   const [micErr, setMicErr] = useState<[string, string]>()
-  useEffect(() => () => stopListening(), [])
+  useEffect(() => () => stopListening(true), [])
   const add = async (text = q) => { if (!text.trim()) return; const a = await answer(text.includes('یاد') || /yaad|yad/.test(text) ? text : `${text} یاد دلانا`); setMsg(a); setQ('') }
   /** Same mic as naming a place: words appear in the box; the herder checks them, then taps ＋. */
   const mic = () => {
-    if (listening) { stopListening(); return }
+    if (listening) { stopListening(); setListening(false); return }   // button off now; words heard so far are used
     setMicErr(undefined)
     if (listen(t => setQ(t), e => { setListening(false); if (e) setMicErr(LISTEN_ERROR[e]) }, t => setQ(t))) setListening(true)
   }

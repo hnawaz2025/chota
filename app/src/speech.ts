@@ -18,7 +18,7 @@ export function speak(ur: string) {
   } catch { return false }
 }
 
-type Rec = { lang: string; interimResults: boolean; onresult: (e: any) => void; onerror: (e: any) => void; onend: () => void; start: () => void; abort: () => void }
+type Rec = { lang: string; interimResults: boolean; onresult: (e: any) => void; onerror: (e: any) => void; onend: () => void; start: () => void; stop: () => void; abort: () => void }
 export const canListen = () => !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
 
 /** Why listening failed, in words the herder (and we) can act on. Undefined = ended normally or cancelled. */
@@ -36,28 +36,46 @@ export const LISTEN_ERROR: Record<ListenError, [string, string]> = {
 const ERR_MAP: Record<string, ListenError> = { 'not-allowed': 'not-allowed', 'service-not-allowed': 'not-allowed', network: 'network',
   'no-speech': 'no-speech', 'audio-capture': 'audio-capture', 'language-not-supported': 'language-not-supported' }
 
-let current: Rec | undefined
-export function stopListening() { try { current?.abort() } catch { /* ignore */ } }
+type Session = { r: Rec; finish: (err?: ListenError) => void; cancel: () => void }
+let current: Session | undefined
+
+/**
+ * Tap-to-stop: end gracefully and keep what was said (cancel = discard, e.g. leaving the screen).
+ * Some mobile browsers fire 'end' late or never after stop/abort, so finish ourselves if it doesn't come.
+ */
+export function stopListening(cancel = false) {
+  const c = current; if (!c) return
+  if (cancel) c.cancel()
+  try { if (cancel) c.r.abort(); else c.r.stop() } catch { /* ignore */ }
+  setTimeout(() => { if (current === c) { try { c.r.abort() } catch { /* ignore */ } c.finish() } }, 1500)
+}
 
 /**
  * onPartial: words so far while speaking (shown live so the herder sees they are being heard).
- * onText: the final text. onEnd is called exactly once: with an error if it failed, else nothing.
+ * onText: the final text (on stop, the words heard so far count as final). onEnd is called exactly once:
+ * with an error if it failed, else nothing.
  */
 export function listen(onText: (t: string) => void, onEnd: (err?: ListenError) => void, onPartial?: (t: string) => void) {
   const C = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
   if (!C) return false
   if (!window.isSecureContext) { onEnd('insecure'); return false }
   const r: Rec = new C(); r.lang = 'ur-PK'; r.interimResults = true
-  let got = false, err: ListenError | undefined, aborted = false
-  let heard = false
-  r.onresult = e => {
-    const res = e.results[e.results.length - 1], text = Array.from(e.results as ArrayLike<any>).map(x => x[0].transcript).join(' ').trim()
-    if (text) heard = true
-    if (res.isFinal) { got = true; if (text) onText(text) } else onPartial?.(text)
+  let got = false, err: ListenError | undefined, cancelled = false, ended = false, partial = ''
+  const finish = (e?: ListenError) => {
+    if (ended) return
+    ended = true; clearTimeout(watchdog)
+    if (current?.r === r) current = undefined
+    if (!got && partial && !cancelled) { got = true; onText(partial) }   // stopped mid-sentence: use what was heard
+    onEnd(cancelled ? undefined : e ?? (got ? undefined : 'no-speech'))
   }
-  r.onerror = e => { if (e?.error === 'aborted') aborted = true; else err = ERR_MAP[e?.error] ?? 'other'; console.warn('speech recognition error:', e?.error) }
+  r.onresult = e => {
+    if (ended) return
+    const res = e.results[e.results.length - 1], text = Array.from(e.results as ArrayLike<any>).map(x => x[0].transcript).join(' ').trim()
+    if (res.isFinal) { if (text) { got = true; onText(text) } } else { partial = text; onPartial?.(text) }
+  }
+  r.onerror = e => { if (e?.error !== 'aborted') err = ERR_MAP[e?.error] ?? 'other'; console.warn('speech recognition error:', e?.error) }
   // Some browsers never fire an error or end when no audio arrives (e.g. no mic device): don't hang on "listening".
-  const watchdog = setTimeout(() => { if (current === r && !got && !heard) { err = 'no-speech'; try { r.abort() } catch { /* ignore */ } } }, 12000)
-  r.onend = () => { clearTimeout(watchdog); current = undefined; onEnd(err ?? (got || aborted ? undefined : 'no-speech')) }
-  try { r.start(); current = r; return true } catch { clearTimeout(watchdog); onEnd('start-failed'); return false }
+  const watchdog = setTimeout(() => { if (!got && !partial) { err = 'no-speech'; try { r.abort() } catch { /* ignore */ } finish(err) } }, 12000)
+  r.onend = () => finish(err)
+  try { r.start(); current = { r, finish, cancel: () => { cancelled = true } }; return true } catch { clearTimeout(watchdog); onEnd('start-failed'); return false }
 }
