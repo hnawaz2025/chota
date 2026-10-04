@@ -4,8 +4,15 @@ This redesign is for the people who will actually carry the phone: herders aroun
 looks and is laid out (`app/src/App.tsx`, `app/src/index.css`). It does not change behaviour: parsing, answers,
 the trail, GPS, herd, reminders, storage and speech are untouched.
 
-Screenshots are in `design/screens/`. They show `before-*` and `after-*` at 390×844, plus some at 360×740 and two in
-dark mode.
+Screenshots are in `design/screens/`:
+- `before-*`: the original UI.
+- `after-dark-*`: the current UI in its default dark charcoal theme.
+- `after-sun-*`: the current UI in ☀️ sun mode.
+
+All are at 390×844, with some at 360×740.
+
+**The current colours are in [Palette v2](#palette-v2-current).** It replaced the per-feature colours of the first
+redesign (sections 2.3 and 4 describe that earlier version, and are kept for the record).
 
 ---
 
@@ -32,7 +39,7 @@ dark mode.
 2. **The number is the answer.** Distances, counts and times are the largest things on screen. Inside spoken
    answers, digits are wrapped in bold sans-serif at 1.2× (`Emph`), so "5.8" jumps out of a Nastaliq sentence.
    The answer text itself is unchanged.
-3. **One feature = one icon + one colour, everywhere.** The same pair is used on tiles, buttons, answer borders,
+3. *(Superseded by Palette v2: features now differ by emoji + label, not hue.)* **One feature = one icon + one colour, everywhere.** The same pair is used on tiles, buttons, answer borders,
    cards and stats.
 
    | Feature | Icon | Colour |
@@ -182,7 +189,7 @@ dark mode.
 
 ## 4. Tokens
 
-**Colour (light).** Contrast was checked with the WCAG formula.
+**Colour (first redesign, superseded by [Palette v2](#palette-v2-current)).** Contrast was checked with the WCAG formula.
 
 | Token | Value | Use | Contrast |
 |---|---|---|---|
@@ -254,6 +261,118 @@ The full sentences "کوئی تصدیق شدہ گنتی نہیں" and the stale 
 - 16px side gutter, 10–12px gaps.
 - Minimum target 48px (demo-only controls 40px). Normal actions 56–64px. Primary actions 72–96px. Mic 180px.
 - Radius 14–20px.
+
+## Palette v2 (current)
+
+A reviewer, endorsed by the user, said the first redesign was too busy: brown, green, purple, yellow, blue, orange,
+red, white outlines, heavy and dotted borders, and several button styles. It looked like a hackathon prototype, not
+a finished product. Palette v2 strips colour back to meaning.
+
+### Rules
+1. **Colour = meaning only.** Features (trip, herd, reminders, places, home) are told apart by **emoji + label**, not
+   hue. The purple herd, amber reminders tile and blue/green feature tiles are gone. Every emoji is kept, as the user
+   asked.
+2. **Brand brown** marks the brand and the primary actions: the big mic, Start Trip, and the main button on each
+   screen.
+3. **Green** means recording, active, confirmed, good grazing, or ✓. The mic turns green while listening (active),
+   with ■ and a pulsing ring. The running-trip tile is green with a REC dot. The recording dot is green.
+4. **Amber** means warning, stale, okay grazing, or assumed. The read-back card waiting for ✓ is amber.
+5. **Red** means poor, error, ✗, or destructive.
+6. **Blue is gone from the UI.** Home and way back use the brand primary button with 🏠. The only blue left is the
+   map's "you are here" dot, a near-universal map convention, which turns grey when the fix is stale.
+7. **One button system:**
+   - **Primary:** filled brand, white text (`.big-btn`).
+   - **Secondary:** one quiet style, a surface tone with a thin line (`.big-btn.secondary`, `.end`, tiles, chips,
+     card actions, "+1 hour", Skip, stepper…).
+   - **Confirm ✓:** filled green.
+   - **Reject ✗:** red outline.
+
+   The orange/blue/purple/dark variants are retired. Old class names (`place`, `back`, `end`, `ok`, `herdc`) are kept
+   but map onto these four styles.
+8. **Calm containers.**
+   - One card style: surface tone, 1px line.
+   - Separation comes from spacing and surface tone, not heavy borders.
+   - Strong 3px marks appear only where they carry meaning: the confirmed herd box, the dashed estimate and
+     never-counted boxes, the start mark on warnings and the history rating.
+   - One radius scale: `--r-s` 10px for pills and small boxes, `--r-m` 14px for buttons and inputs, `--r-l` 20px for
+     cards, tiles and sheets.
+9. **Honesty semantics, quieter but intact.**
+   - **Dashed** is only for estimate, unconfirmed or last known: the ≈ estimate box, the never-counted "?" box, the
+     read-back waiting for ✓, and the home distance from a stale fix.
+   - **Dotted** is only for trail gaps: map gaps, the history "وقفہ" pill, and the dotted underline on trip distance
+     with gaps.
+   - Solid is everything recorded or confirmed.
+   - The decorative hatching on the estimate box is gone. The dashed border + ≈ carry it.
+   - The typing box is no longer dashed, so dashed keeps one meaning.
+   - System reminders are no longer dashed (the "CHOTA" badge marks them).
+10. **Map trails:** rating colours stay green / amber / red (unrated grey). **Today's live trail is cream (`#fff4e0`)
+    with a dark brown casing**, so it is visible on the brown satellite image and isn't confused with "okay" amber.
+    The legend shows the same cased line.
+11. **Demo markers stay obvious but tidy:** solid yellow pills with dark ink (DEMO GPS, +Nd, DEMO walk, and the
+    selected demo speed). Yellow is used for nothing else.
+
+### Themes
+- **Dark charcoal is the default.** This was the user's decision. It no longer follows the phone's
+  `prefers-color-scheme`.
+- **☀️ Sun mode** is a strong light theme for direct sunlight. It is a one-tap toggle at the left end of the header
+  (☀️ ↔ 🌙). It sets `<html data-theme="light">`, is remembered in `localStorage` (`chota.theme`, read and written
+  in try/catch), and is applied before first paint.
+
+### Tokens: every colour and its one meaning
+Contrast is WCAG, computed. "AAA" means ≥7:1.
+
+**Surfaces and text** (dark / sun)
+
+| Token | Dark | Sun | Meaning | Contrast |
+|---|---|---|---|---|
+| `--bg` | `#161412` | `#faf7f0` | page | — |
+| `--surface` | `#221e1b` | `#ffffff` | cards, tiles, sheets, inputs | — |
+| `--surface-2` | `#2c2723` | `#ece5d8` | secondary buttons | ink on it: 12.9 / 15.1 |
+| `--head` | `#0e0c0b` | `#3d2410` | header bar | white 14.4+ |
+| `--ink` | `#f5efe6` | `#14100c` | all key text | 16.1 / 17.7 on bg |
+| `--muted` | `#cdc3b6` | `#45382b` | English subtitles, secondary text | 10.6 / 10.6 on bg; ≥8.5 on every surface |
+| `--line` | `#3a342f` | `#ddd3c3` | thin dividers only (decorative; nothing relies on it) | 1.5 / 1.4 |
+| `--line-strong` | `#8a7f73` | `#6b5d4d` | inputs, the dashed estimate border, home chip | 4.7 / 6.0 (≥3:1 non-text) |
+
+**Brand**
+
+| Token | Dark | Sun | Meaning | Contrast |
+|---|---|---|---|---|
+| `--brand` | `#7a4520` | `#6e3d1b` | primary action fill, big mic, Start Trip | white 7.8 / 9.0 |
+| `--brand-fg` | `#e8a874` | `#6e3d1b` | brand as text: links, focus ring, selected row | 9.0 / 8.4 on bg |
+| header wordmark | `#f3c59a` | `#f3c59a` | "چھوٹا" | 12.3 / 9.1 on header |
+
+**Meaning colours**
+
+| Token | Dark | Sun | Meaning | Contrast |
+|---|---|---|---|---|
+| `--good` | `#155f33` | `#155f33` | fill: ✓ confirm, listening / active, trip running | white 7.7 |
+| `--good-fg` / `--good-bg` | `#8fd8a4` / `#17301f` | `#14562f` / `#ddf0e2` | confirmed count, recording line, "good" tint | 8.5 / 7.3 |
+| `--warn` | `#f0b400` | `#f0b400` | fill / border: warning, stale, okay, assumed | ink 10.1 |
+| `--warn-fg` / `--warn-bg` | `#f2c14e` / `#3a2c10` | `#6b4500` / `#fdecc0` | caveat text on its tint | 8.1 / 7.2 |
+| `--bad` | `#a3271b` | `#a3271b` | fill / border: ✗, poor, destructive | white 7.3 |
+| `--bad-fg` / `--bad-bg` | `#ff9e92` / `#3b1a16` | `#8f1f15` / `#fbe1dc` | poor / minus text on its tint | 7.9 / 7.1 |
+| `--demo` | `#ffd84d` | `#ffd84d` | simulated data only | ink 13.7 |
+
+**Map** (fixed, not themed)
+- Rating trails: good `#2e9e4f`, okay `#d9a21b`, poor `#c4442f`, unrated `#5b6b7a`.
+- Live trail `#fff4e0` on a `#2a1a0e` casing.
+- Gaps dotted in the trail's colour.
+
+**Shape:** `--r-s` 10px · `--r-m` 14px · `--r-l` 20px · `--bw` 1px (normal lines) · `--bw-mark` 3px (meaningful marks
+only).
+
+The spacing tokens (§4a) are unchanged. `tests/layout.mjs` now runs **dark (default) and sun mode** at 390×844 and
+360×740, and reports **0 violations** in all four combinations.
+
+### Unsure / to validate
+- **Dark default in direct sun.** A dark theme is harder to read in glare than a light one, which is why sun mode
+  exists. Field-test whether herders find the ☀️ toggle, and whether sun mode should be the default during the day.
+  (An automatic switch would need the ambient-light sensor, which the web can't reliably reach.)
+- **Green for "listening".** The palette makes listening "active = green". Many people expect a red record dot. The
+  ■ stop sign and pulsing ring carry the state either way.
+- **Losing feature colour.** Features are now told apart only by emoji + label. Check that herders still find Herd
+  and Reminders as fast as with the coloured tiles.
 
 ## 5. Open questions for testing with herders
 

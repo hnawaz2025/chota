@@ -13,9 +13,12 @@ const RATING_COLOR: Record<string, string> = { good: '#2e9e4f', okay: '#d9a21b',
 /** Where nothing was recorded: a thin dotted connector between the recorded ends, never a solid "walked" line. */
 const gapStyle = (color: string): L.PolylineOptions => ({ color, weight: 2, dashArray: '1 9', lineCap: 'round', opacity: 0.95 })
 const ll = (p: { lat: number; lon: number }) => [p.lat, p.lon] as [number, number]
-function drawTrail(g: L.LayerGroup, pts: Pt[], startT: number, endT: number, color: string, weight: number) {
+/** Today's live trail: cream with a dark casing, so it stands out on the brown satellite image (not a rating colour). */
+const LIVE = '#fff4e0', CASING = '#2a1a0e'
+function drawTrail(g: L.LayerGroup, pts: Pt[], startT: number, endT: number, color: string, weight: number, casing?: string) {
   const tr = splitTrail(pts, startT, endT)
-  for (const seg of tr.segments) L.polyline(seg.map(ll), { color, weight, opacity: 0.85 }).addTo(g)
+  if (casing) for (const seg of tr.segments) L.polyline(seg.map(ll), { color: casing, weight: weight + 3, opacity: 0.9 }).addTo(g)
+  for (const seg of tr.segments) L.polyline(seg.map(ll), { color, weight, opacity: casing ? 1 : 0.85 }).addTo(g)
   for (const gp of tr.gaps) if (gp.from && gp.to)
     L.polyline([ll(gp.from), ll(gp.to)], gapStyle(color)).bindTooltip('ریکارڈ نہیں ہوا · not recorded').addTo(g)
 }
@@ -80,11 +83,11 @@ export function MapView({ focus, allTrips = false, className = 'map' }: { focus?
       if (focus?.tripIds?.includes(t.id!)) fitPts.push(...pts.map(ll))
     }
     if (live?.length && liveTrip) {
-      drawTrail(g, live, liveTrip.startedAt, now(), '#ff7a00', focus?.wayBack ? 7 : 5)
+      drawTrail(g, live, liveTrip.startedAt, now(), LIVE, focus?.wayBack ? 6 : 4, CASING)
       const lastPt = live[live.length - 1]
       // Still unrecorded since the last breadcrumb, but we know where we are now: dotted, not solid.
       if (fix && fixState(fix, now()).state !== 'stale' && fix.t - lastPt.t > GAP_MS)
-        L.polyline([ll(lastPt), ll(fix)], gapStyle('#ff7a00')).addTo(g)
+        L.polyline([ll(lastPt), ll(fix)], gapStyle(LIVE)).addTo(g)
       if (focus?.wayBack) { fitPts.push(...live.map(ll)); L.marker(ll(live[0]), { icon: icon('🚩') }).addTo(g) }
     }
     if (home) {

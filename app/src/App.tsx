@@ -17,6 +17,11 @@ type Screen = 'home' | 'trip' | 'reminders' | 'herd' | 'map' | 'history' | 'sett
 const lsGet = (k: string) => { try { return localStorage.getItem(k) } catch { return null } }
 const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v) } catch { /* ignore */ } }
 
+/** Dark charcoal is the default; ☀️ sun mode is a strong light theme for direct sunlight. Remembered per phone. */
+const THEME_KEY = 'chota.theme'
+const applyTheme = (sun: boolean) => { if (sun) document.documentElement.dataset.theme = 'light'; else delete document.documentElement.dataset.theme }
+applyTheme(lsGet(THEME_KEY) === 'sun')   // before first paint, so there is no flash of the wrong theme
+
 /**
  * One icon + one colour per feature, used on tiles, buttons, answers and cards alike, so a herder who does not read
  * can still tell "this is about my herd" from "this is about the way home". Colours live in index.css (--trip, --herd…).
@@ -40,7 +45,7 @@ function Emph({ s }: { s: string }) {
 /** Urdu line with optional English subtitle. */
 function T({ ur, en, big, emph }: { ur: string; en?: string; big?: boolean; emph?: boolean }) {
   const showEn = lsGet('chota.en') !== '0'
-  return <span className={big ? 'tx big' : 'tx'}><span className="ur" dir="rtl">{emph ? <Emph s={ur} /> : ur}</span>{showEn && en && <span className="en">{en}</span>}</span>
+  return <span className={big ? 'tx big' : 'tx'}><span className="ur" dir="rtl">{emph ? <Emph s={ur} /> : ur}</span>{showEn && en && <span className="en" dir="ltr">{en}</span>}</span>
 }
 
 /** An icon in its own box (never inline-touching text). */
@@ -89,6 +94,8 @@ export default function App() {
 /** RTL header: back sits top-right where Urdu readers look first; demo badges (simulated data) always visible. */
 function Header({ onHome, screen }: { onHome: () => void; screen: Screen }) {
   const off = clockOffsetDays()
+  const [sun, setSun] = useState(() => lsGet(THEME_KEY) === 'sun')
+  const toggleSun = () => { const s = !sun; setSun(s); applyTheme(s); lsSet(THEME_KEY, s ? 'sun' : 'dark') }
   return (
     <header dir="rtl">
       {screen !== 'home' ? <button className="back" onClick={onHome} aria-label="Home">→</button> : null}
@@ -98,6 +105,7 @@ function Header({ onHome, screen }: { onHome: () => void; screen: Screen }) {
         {off > 0 && <span className="badge demo">+{off}d</span>}
         <span className="badge off">{navigator.onLine ? 'online' : 'offline ✓'}</span>
       </div>
+      <button className="sun" onClick={toggleSun} aria-pressed={sun} aria-label={sun ? 'Dark mode' : 'Sun mode (bright light)'}>{sun ? '🌙' : '☀️'}</button>
     </header>
   )
 }
@@ -223,7 +231,7 @@ function ForgottenTrip({ o, onDone }: { o: OpenTrip; onDone: (endedId?: number) 
       <p className="spot bad"><T ur={last ? `آخری ریکارڈ شدہ جگہ ${spanUr(now() - last)} پہلے کی ہے۔ اس کے بعد کچھ ریکارڈ نہیں ہوا۔` : 'اس سفر میں کوئی جگہ ریکارڈ نہیں ہوئی۔'}
         en={last ? `The last recorded point was ${spanEn(now() - last)} ago. Nothing was recorded after that.` : 'No point was recorded on this trip.'} emph /></p>
       <button className="big-btn end" onClick={async () => onDone(await endTrip(last ?? o.startedAt))}><I c="⏹" /><T ur="آخری ریکارڈ شدہ جگہ پر ختم کریں" en="End it at the last recorded point" /></button>
-      <button className="big-btn ok" onClick={() => { resumeTrip(); onDone() }}><I c="▶︎" /><T ur="میں ابھی اسی سفر پر ہوں" en="I am still on this trip" /></button>
+      <button className="big-btn secondary" onClick={() => { resumeTrip(); onDone() }}><I c="▶︎" /><T ur="میں ابھی اسی سفر پر ہوں" en="I am still on this trip" /></button>
       <p className="muted note"><T ur="جاری رکھنے پر درمیان کا وقفہ ریکارڈ میں وقفہ ہی رہے گا۔" en="If you continue, the silence stays in the record as a gap." /></p>
     </Modal>
   )
@@ -518,7 +526,7 @@ function CountPad({ species, onClose }: { species?: Species; onClose: () => void
       <span className="emoji">✓ {SPECIES_IC[sp]}</span>
       <T ur={`گنتی محفوظ: ${n}۔ پچھلے اندازے سے فرق ${res}۔`} en={`Saved ${n}. Differs from the previous estimate by ${res}.`} big emph />
       <T ur="کیا کوئی پیدائش، خرید، فروخت یا نقصان درج ہونے سے رہ گیا تھا؟ نئی گنتی اب درست مانی جائے گی۔" en="Was a birth, purchase, sale or loss not recorded? The new count is now authoritative." />
-      <button className="big-btn ok" onClick={onClose}>OK</button>
+      <button className="big-btn" onClick={onClose}>OK</button>
     </Modal>)
   return (
     <Modal onClose={onClose}>
@@ -536,8 +544,8 @@ function EventPad({ species, onClose }: { species: Species; onClose: () => void 
     <Modal onClose={onClose}>
       <Lab ic={SPECIES_IC[species]} ur={`${SPECIES_UR[species]} — کیا ہوا؟`} en="What happened?" big />
       <div className="stepper"><button onClick={() => setQty(q => Math.max(1, q - 1))} aria-label="less">−</button><b>{qty}</b><button onClick={() => setQty(q => q + 1)} aria-label="more">+</button></div>
-      <div className="rate">{ADD_TYPES.map(([t, u, e]) => <button key={t} className="good" onClick={() => rec(t)}><I c="＋" /><T ur={u} en={e} /></button>)}</div>
-      <div className="rate grid2">{REM_TYPES.map(([t, u, e]) => <button key={t} className="poor" onClick={() => rec(t)}><I c="−" /><T ur={u} en={e} /></button>)}</div>
+      <div className="rate">{ADD_TYPES.map(([t, u, e]) => <button key={t} className="add" onClick={() => rec(t)}><I c="＋" /><T ur={u} en={e} /></button>)}</div>
+      <div className="rate grid2">{REM_TYPES.map(([t, u, e]) => <button key={t} className="sub" onClick={() => rec(t)}><I c="−" /><T ur={u} en={e} /></button>)}</div>
     </Modal>
   )
 }

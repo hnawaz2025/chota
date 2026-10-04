@@ -1,6 +1,6 @@
 // Layout check: Urdu/English labels never touch, icons never overlap text, text stays inside its box.
 // Usage: npm run build && npx vite preview --port 4173 &  node tests/layout.mjs [baseUrl]
-// Runs 390×844 and 360×740, light and dark, over the main screens and modals. Exits non-zero on any violation.
+// Runs 390×844 and 360×740, in the dark default theme and ☀️ sun mode, over the main screens and modals. Exits non-zero on any violation.
 // Glyph boxes come from Range.getClientRects() (the font's real content area, which for Nastaliq is taller than
 // the CSS line box), so this is stricter than comparing element boxes.
 import { chromium } from 'playwright'
@@ -73,12 +73,12 @@ function audit({ MIN_GAP, INSET }) {
 
 const b = await chromium.launch()
 const all = []
-for (const [w, h] of [[390, 844], [360, 740]]) for (const scheme of ['light', 'dark']) {
-  const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, locale: 'ur-PK', colorScheme: scheme,
+for (const [w, h] of [[390, 844], [360, 740]]) for (const theme of ['dark', 'sun']) {   // dark = default, sun = ☀️ sun mode
+  const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, locale: 'ur-PK',
     permissions: ['geolocation'], geolocation: { latitude: 29.5600, longitude: 65.9400, accuracy: 12 } })
   const p = await ctx.newPage()
   const errors = []; p.on('pageerror', e => errors.push(e.message))
-  const tag = `${w}×${h} ${scheme}`
+  const tag = `${w}×${h} ${theme}`
   const check = async screen => {
     await p.evaluate(() => document.fonts.ready); await p.waitForTimeout(150)
     for (const v of await p.evaluate(audit, { MIN_GAP, INSET })) all.push({ at: `${tag} ${screen}`, ...v })
@@ -88,7 +88,8 @@ for (const [w, h] of [[390, 844], [360, 740]]) for (const scheme of ['light', 'd
   const dismiss = async () => { for (let i = 0; i < 6 && await p.locator('.modal').count(); i++) { await check('reminder pop-up'); await p.getByText('بعد میں').first().click().catch(() => {}); await p.waitForTimeout(250) } }
   const ask = async q => { await dismiss(); await home(); await p.fill('.voice.big .askbar input', q); await p.press('.voice.big .askbar input', 'Enter'); await p.waitForTimeout(700) }
 
-  await p.goto(URL); await p.evaluate(() => { localStorage.clear(); indexedDB.deleteDatabase('chota') }); await p.reload(); await p.waitForTimeout(2000)
+  await p.goto(URL); await p.evaluate(t => { localStorage.clear(); if (t === 'sun') localStorage.setItem('chota.theme', 'sun'); indexedDB.deleteDatabase('chota') }, theme); await p.reload(); await p.waitForTimeout(2000)
+  if ((await p.evaluate(() => document.documentElement.dataset.theme ?? 'dark')) !== (theme === 'sun' ? 'light' : 'dark')) all.push({ at: tag, kind: 'theme not applied', sel: 'html', text: theme, detail: '' })
   await check('home empty')
   await p.locator('details.examples-box summary').click(); await check('home examples open'); await p.locator('details.examples-box summary').click()
   await click('سیٹنگز'); await click('یہ جگہ میرا گھر ہے'); await p.waitForTimeout(300); await check('settings'); await home()
